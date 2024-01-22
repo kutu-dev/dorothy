@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "dorothy"
+version = "0.1.0"
+description = ""
+authors = ["Kutu <git@dobon.dev>"]
+license = "MIT License"
+readme = "README.md"
+
+[tool.poetry.scripts]
+dorothy = 'dorothy.__main__:main'
+
+[tool.poetry.dependencies]
+python = "^3.11.0"
+colorama = "^0.4.6"
+pygobject = "^3.46.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.1.14"
+black = "^23.12.1"
+mypy = "^1.8.0"
+types-colorama = "^0.4.15.20240106"
+gst-python-stubs = "^0.0.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
