@@ -1,11 +1,17 @@
+from dorothy.config import ConfigSchema
 from dorothy.extensions import Provider
 from dorothy.models import Song
 from pathlib import Path
 
 
 class FilesystemProvider(Provider):
+    config_schema = ConfigSchema(
+        node_id="filesystem-provider",
+        node_type=Provider
+    )
+
     def __init__(self):
-        super().__init__(__name__)
+        super().__init__()
 
     def list_all_songs(self) -> list[Song]:
         foo = (Path.home() / Path("music")).glob('**/*')
@@ -15,9 +21,6 @@ class FilesystemProvider(Provider):
             if not song.is_file():
                 continue
 
-            bar.append(Song(song.absolute(), song.name))
+            bar.append(Song(song.absolute(), f"file://{song.absolute()}", song.name))
 
         return bar
-
-    def get_uri(self, id_: Path) -> str:
-        return f"file://{id_}"

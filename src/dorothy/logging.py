@@ -2,6 +2,7 @@ import logging
 import colorama
 from . import Colors
 
+
 class ColorizedFormatter(logging.Formatter):
     """Custom formatter used to make log messages colored according to their level"""
 

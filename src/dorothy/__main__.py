@@ -1,5 +1,10 @@
+import sys
+import time
+
 from . import logging
 from . import __version__, Colors
+from .channel import Channel
+from .config import ConfigManager
 from .extensions import load_extensions
 
 
@@ -15,35 +20,40 @@ def main() -> int:
     logger.info(f"  Time to mix {Colors.blue}drinks{Colors.reset} and change {Colors.red}lives{Colors.reset}")
     logger.info("")
 
-    providers = load_extensions()
+    config_manager = ConfigManager()
+    extensions = load_extensions(config_manager)
 
-    for song in providers[0].list_all_songs():
-        print(providers[0].get_uri(song.id))
+    # TODO Priority
+    # TODO Unify Provider and Listener in a common class Node,
+    # TODO make a NodeConfig for the nodes, make the orchestrator,
+    # TODO make all the controllers system
+    
+    # TODO Not priority
+    # TODO make a global config manager (in ConfigManager?) for Dorothy configs like (use_splash/skip_splash)
+    # TODO Add linter and formater with custom configs using Ruff
 
-        import gi
+    sys.exit()
+    songs = extensions.providers[0].list_all_songs()
 
-        gi.require_version('Gst', '1.0')
-        from gi.repository import Gst, GObject
-        Gst.init(None)
+    channel = Channel()
+    logger.debug("channel Adding song: " + songs[0].uri)
+    channel.add_to_queue(songs[0])
+    channel.listeners.extend(extensions.listeners)
+    channel.play()
 
-        player = Gst.ElementFactory.make("playbin", None)
+    channel_EOPOOO = Channel()
+    logger.debug("channel1 Adding song: " + songs[1].uri)
+    channel_EOPOOO.add_to_queue(songs[1])
+    channel_EOPOOO.listeners.extend(extensions.listeners)
+    channel_EOPOOO.play()
 
-        # Disable video
-        fakesink = Gst.ElementFactory.make("fakesink", "fakesink")
-        player.set_property("video-sink", fakesink)
-
-        player.set_property("uri", providers[0].get_uri(song.id))
-
-        res = player.set_state(Gst.State.PLAYING)
-
-        if res == Gst.StateChangeReturn.FAILURE:
-            print("Unable to set the pipeline to the playing state.")
-
-        bus = player.get_bus()
-
-        msg = bus.timed_pop_filtered(
-            Gst.CLOCK_TIME_NONE, Gst.MessageType.ERROR | Gst.MessageType.EOS)
-
-        player.set_state(Gst.State.NULL)
+    # TODO This isn't stopping "channel" for some reason
+    # TODO Improve the extension instantiation to clean all of them is a top priority
+    time.sleep(5)
+    print("Stopping 0")
+    channel.cleanup_listeners()
+    time.sleep(5)
+    print("Stopping 1")
+    channel_EOPOOO.cleanup_listeners()
 
     return 0

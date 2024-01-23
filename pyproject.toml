@@ -13,6 +13,7 @@ dorothy = 'dorothy.__main__:main'
 python = "^3.11.0"
 colorama = "^0.4.6"
 pygobject = "^3.46.0"
+toml = "^0.10.2"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.1.14"

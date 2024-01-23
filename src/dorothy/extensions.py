@@ -1,42 +1,44 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from dataclasses import dataclass, field
+from typing import Any, Type
 
 from . import Colors
+from .config import ConfigSchema, ConfigManager
 from .logging import get_logger
 import pkgutil
 import importlib
-import dorothy.ext.providers
+import dorothy.ext
 import sys
 
-from .models import Song
+from .models import Song, Provider, Listener, ExtensionManifesto
 
 
-class Provider(ABC):
-    def __init__(self, name: str) -> None:
-        self.logger = get_logger(name)
-        self.logger.info(f"Provider instantiated")
-
-    @abstractmethod
-    def list_all_songs(self) -> list[Song]:
-        pass
-
-    @abstractmethod
-    def get_uri(self, id_: Any) -> str:
-        pass
+@dataclass
+class Extensions:
+    providers: list[Provider] = field(default_factory=lambda: [])
+    listeners: list[Listener] = field(default_factory=lambda: [])
 
 
-def load_extensions() -> list[Provider]:
-    providers: list[Provider] = []
+def load_extensions(config_manager: ConfigManager) -> Extensions:
+    extensions = Extensions()
     logger = get_logger(__name__)
 
-    providers_modules = list(pkgutil.iter_modules(dorothy.ext.providers.__path__, dorothy.ext.providers.__name__ + "."))
-    logger.info(f"Found {len(providers_modules)} provider(s), loading them...")
+    extension_modules = list(pkgutil.iter_modules(dorothy.ext.__path__, dorothy.ext.__name__ + "."))
+    logger.info(f"Found {len(extension_modules)} extension(s), loading them...")
 
-    for _, name, _ in providers_modules:
+    for _, name, _ in extension_modules:
         importlib.import_module(name)
+        manifesto: ExtensionManifesto = sys.modules[name].Manifesto()
 
-        for provider in sys.modules[name].Manifesto.get_providers():
-            logger.info(f'Loading provider {Colors.dim}"{provider.__name__}"{Colors.reset}...')
-            providers.append(provider())
+        logger.info(f'Loading extension {Colors.dim}"{manifesto.extension_id}"{Colors.reset}...')
 
-    return providers
+        for provider in manifesto.get_providers():
+            logger.info(f'Loading provider {Colors.dim}"{provider.config_schema.node_id}"{Colors.reset}...')
+
+            extensions.providers.extend(config_manager.node_factory(manifesto.extension_id, provider))
+
+        for listener in manifesto.get_listeners():
+            logger.info(f'Loading listeners {Colors.dim}"{listener.config_schema.node_id}"{Colors.reset}...')
+            extensions.listeners.extend(config_manager.node_factory(manifesto.extension_id, listener))
+
+    return extensions
