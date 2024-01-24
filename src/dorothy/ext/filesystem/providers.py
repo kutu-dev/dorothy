@@ -13,7 +13,7 @@ class FilesystemProvider(Provider):
     def __init__(self):
         super().__init__()
 
-    def list_all_songs(self) -> list[Song]:
+    def get_all_songs(self) -> list[Song]:
         foo = (Path.home() / Path("music")).glob('**/*')
         bar = []
 

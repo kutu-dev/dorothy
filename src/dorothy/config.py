@@ -27,6 +27,8 @@ class ConfigManager:
         # Ensure the global config directory is available
         self.base_config_path.mkdir(parents=True, exist_ok=True)
 
+    # TODO Simplify and reduce nesting in this function.
+    #  Only God really knows the code flow here. Good luck, stay safe.
     def node_factory(self, extension_id: str, node: type[Node]) -> list[Node]:
         extension_config_path = self.base_config_path / extension_id
         node_id = node.config_schema.node_id
@@ -53,19 +55,25 @@ class ConfigManager:
                     self.logger.info(f'Node instance {Colors.dim}"{instance_name}"{Colors.reset} is {Colors.red}disabled{Colors.reset}, skipping...')
                     continue
 
-                self.logger.info(f'Node instance {Colors.dim}"{instance_name}"{Colors.reset} {Colors.blue}loaded')
+                self.logger.info(f'Node instance {Colors.dim}"{instance_name}"{Colors.reset} {Colors.blue}loaded{Colors.reset}')
 
                 if not ("channels" in instance_config and len(instance_config["channels"]) > 1):
                     new_instance = node()
-                    new_instance.set_instance(f"node-instance-{instance_name}", node_config)
+                    new_instance.set_instance(f"{node_id}-instance-{instance_name}", node_config)
                     nodes.append(new_instance)
 
                     continue
 
                 self.logger.info(f'Detected multiple channels targeted for instance {Colors.dim}"{instance_name}"{Colors.reset}, loading each one...')
 
+                already_used_channels: dict[str, int] = {}
                 for channel in instance_config["channels"]:
                     self.logger.info(f'Assigned instance {Colors.dim}"{instance_name}"{Colors.reset} to channel {Colors.dim}"{channel}"{Colors.reset}')
+
+                    if channel not in already_used_channels:
+                        already_used_channels[channel] = 1
+                    else:
+                        already_used_channels[channel] += 1
 
                     new_instance = node()
 
@@ -74,7 +82,7 @@ class ConfigManager:
                     modified_instance_config = dict(node_config)
                     modified_instance_config["channel"] = [channel]
 
-                    new_instance.set_instance(f"node-instance-{instance_name}-{str(channel)}", modified_instance_config)
+                    new_instance.set_instance(f"{node_id}-instance-{instance_name}-{str(channel)}-{already_used_channels[channel]}", modified_instance_config)
                     nodes.append(new_instance)
 
             return nodes

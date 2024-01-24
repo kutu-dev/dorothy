@@ -45,9 +45,10 @@ class PlaybinListener(Listener):
         player.set_state(Gst.State.NULL)
 
     def play(self, song: Song) -> None:
-        self.song = song
-        self.player_process = Process(target=self.foo, args=(song,))
-        self.player_process.start()
+        print(self.instance_id + ": " + song.uri)
+        # self.song = song
+        # self.player_process = Process(target=self.foo, args=(song,))
+        # self.player_process.start()
 
     def clean(self) -> None:
         self.logger.debug(self.uri)

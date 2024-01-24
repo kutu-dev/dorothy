@@ -24,5 +24,5 @@ class Colors:
     dim = colorama.Style.DIM
 
 
-# Fix Windows colors globally
+# Fix Windows terminal colors globally
 colorama.just_fix_windows_console()
