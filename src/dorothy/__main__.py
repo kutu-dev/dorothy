@@ -6,10 +6,11 @@ from . import __version__, Colors
 from .channel import Channel
 from .config import ConfigManager
 from .extensions import load_extensions
+from .models import Controller
 from .orchestrator import Orchestrator
 
 
-def main() -> int:
+def main() -> None:
     logger = logging.get_logger(__name__)
 
     logger.info(f"{Colors.purple}     ___              _   _        {Colors.reset}")
@@ -25,15 +26,18 @@ def main() -> int:
     extensions = load_extensions(config_manager)
     orchestrator = Orchestrator(extensions.providers, extensions.listeners)
 
-    for controller in extensions.controllers:
-        controller.setup_controller(orchestrator)
-
-    orchestrator.cleanup_nodes()
+    try:
+        start_mainloop(orchestrator, extensions.controllers)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        orchestrator.cleanup_nodes()
 
     logger.info("See you at Tres Alicias...")
+    sys.exit()
 
     # TODO Priority:
-    #  - Make thinks "life" with Process (or maybe another approach)
+    #  - Finish parallel client connections to the socket and start making a little API for it
     #  - Make URI use urilib from Python instead of str (?)
 
     # TODO Not priority:
@@ -42,28 +46,11 @@ def main() -> int:
     #  - Add linter and formater with custom configs using Ruff
     #  - URI transformers (when Discord bot is in the works)
 
-    sys.exit()
 
+def start_mainloop(orchestrator: Orchestrator, controllers: list[Controller]) -> None:
+    for controller in controllers:
+        controller.setup_controller(orchestrator)
+        print("SES")
 
-    channel = Channel()
-    logger.debug("channel Adding song: " + songs[0].uri)
-    channel.add_to_queue(songs[0])
-    channel.listeners.extend(extensions.listeners)
-    channel.play()
-
-    channel_EOPOOO = Channel()
-    logger.debug("channel1 Adding song: " + songs[1].uri)
-    channel_EOPOOO.add_to_queue(songs[1])
-    channel_EOPOOO.listeners.extend(extensions.listeners)
-    channel_EOPOOO.play()
-
-    # TODO This isn't stopping "channel" for some reason
-    # TODO Improve the extension instantiation to clean all of them is a top priority
-    time.sleep(5)
-    print("Stopping 0")
-    channel.cleanup_listeners()
-    time.sleep(5)
-    print("Stopping 1")
-    channel_EOPOOO.cleanup_listeners()
-
-    return 0
+    while True:
+        pass

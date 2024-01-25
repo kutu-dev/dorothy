@@ -59,7 +59,7 @@ class ConfigManager:
 
                 if not ("channels" in instance_config and len(instance_config["channels"]) > 1):
                     new_instance = node()
-                    new_instance.set_instance(f"{node_id}-instance-{instance_name}", node_config)
+                    new_instance.setup_instance(f"{node_id}-instance-{instance_name}", instance_config)
                     nodes.append(new_instance)
 
                     continue
@@ -82,7 +82,7 @@ class ConfigManager:
                     modified_instance_config = dict(node_config)
                     modified_instance_config["channel"] = [channel]
 
-                    new_instance.set_instance(f"{node_id}-instance-{instance_name}-{str(channel)}-{already_used_channels[channel]}", modified_instance_config)
+                    new_instance.setup_instance(f"{node_id}-instance-{instance_name}-{str(channel)}-{already_used_channels[channel]}", modified_instance_config)
                     nodes.append(new_instance)
 
             return nodes
@@ -93,6 +93,7 @@ class ConfigManager:
         default_config = {
             "default": {
                 "enabled": False,
+                **config_schema.default_config
             }
         }
 

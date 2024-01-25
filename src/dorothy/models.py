@@ -31,12 +31,15 @@ class Node:
         self.logger: Logger | None = None
         self.instance_config: dict = {}
 
-    def set_instance(self, instance_id: str, instance_config: dict) -> None:
+    def setup_instance(self, instance_id: str, instance_config: dict) -> None:
         self.instance_id = instance_id
         self.logger = get_logger(instance_id)
         self.instance_config = instance_config
 
         self.logger.info(f'Node {Colors.dim}"{instance_id}"{Colors.reset} instantiated')
+
+    def start(self) -> None:
+        ...
 
     def cleanup(self) -> bool:
         return True
@@ -50,11 +53,8 @@ class Controller(Node, ABC):
 
     def setup_controller(self, orchestrator: "Orchestrator") -> None:
         self.orchestrator = orchestrator
-        self.start_controller()
+        self.start()
 
-    @abstractmethod
-    def start_controller(self) -> None:
-        ...
 
 class Provider(Node, ABC):
     @abstractmethod
@@ -65,6 +65,10 @@ class Provider(Node, ABC):
 class Listener(Node, ABC):
     @abstractmethod
     def play(self, song: Song) -> None:
+        ...
+
+    @abstractmethod
+    def stop(self) -> None:
         ...
 
 
