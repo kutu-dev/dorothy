@@ -1,19 +1,14 @@
+
 from dorothy.config import ConfigSchema
-from dorothy.extensions import Listener
-from multiprocessing import Process
-from dorothy.models import Song
+from dorothy.models import Listener, Song
 
-import gi
-
-gi.require_version('Gst', '1.0')
-from gi.repository import Gst, GObject
+import gi  # type: ignore [import-untyped]
+gi.require_version("Gst", "1.0")
+from gi.repository import Gst  # type: ignore [import-untyped]
 
 
 class PlaybinListener(Listener):
-    config_schema = ConfigSchema(
-        node_id="playbin-listener",
-        node_type=Listener
-    )
+    config_schema = ConfigSchema(node_id="playbin-listener", node_type=Listener)
 
     def __init__(self) -> None:
         super().__init__()

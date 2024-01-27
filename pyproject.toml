@@ -14,14 +14,19 @@ python = "^3.11.0"
 colorama = "^0.4.6"
 pygobject = "^3.46.0"
 toml = "^0.10.2"
+aiohttp = {extras = ["speedups"], version = "^3.9.1"}
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.1.14"
-black = "^23.12.1"
 mypy = "^1.8.0"
 types-colorama = "^0.4.15.20240106"
-gst-python-stubs = "^0.0.2"
 types-toml = "^0.10.8.7"
+
+[tool.ruff]
+select = ["E", "F", "I"]
+
+[tool.ruff.format]
+docstring-code-format = true
 
 [build-system]
 requires = ["poetry-core"]

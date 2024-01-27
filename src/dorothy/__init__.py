@@ -1,11 +1,13 @@
-import sys
 import platform
+import sys
+
 if not sys.version_info >= (3, 11, 0):
-    sys.exit(f"Python version 3.11.0 or later required, found {platform.python_version()}")
+    sys.exit(f"Python 3.11.0 or later required, found {platform.python_version()}")
 
 from dataclasses import dataclass
-import colorama
 from importlib.metadata import version
+
+import colorama
 
 # Global package variables
 __version__ = version("dorothy")

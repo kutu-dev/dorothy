@@ -1,19 +1,20 @@
 import logging
+
 import colorama
+
 from . import Colors
 
 
 class ColorizedFormatter(logging.Formatter):
     """Custom formatter used to make log messages colored according to their level"""
 
-    def format(self, record):
-
+    def format(self, record: logging.LogRecord) -> str:
         colors = {
             logging.DEBUG: Colors.cyan,
             logging.INFO: Colors.green,
             logging.WARNING: Colors.yellow,
             logging.ERROR: Colors.red,
-            logging.CRITICAL: Colors.magenta
+            logging.CRITICAL: Colors.magenta,
         }
 
         colorized_log_level = f"[{colors[record.levelno]} %(levelname)s {Colors.reset}]"

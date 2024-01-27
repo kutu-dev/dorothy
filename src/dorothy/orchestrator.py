@@ -1,13 +1,15 @@
 from . import Colors
 from .channel import Channel
 from .logging import get_logger
-from .models import Listener, Song, Provider
+from .models import Id, Listener, Provider, Song
 
 
 class Orchestrator:
     """Abstraction between listeners and providers to the controllers"""
 
-    def __init__(self, providers: list[Provider], listeners: list[Listener]) -> None:
+    def __init__(
+        self, providers: dict[str, Provider], listeners: list[Listener]
+    ) -> None:
         self.logger = get_logger(__name__)
         self.logger.info("Wiring up the orchestrator")
 
@@ -19,8 +21,8 @@ class Orchestrator:
         self.initialize_channels(listeners)
 
     @staticmethod
-    def start_nodes(providers: list[Provider], listeners: list[Listener]) -> None:
-        for provider in providers:
+    def start_nodes(providers: dict[str, Provider], listeners: list[Listener]) -> None:
+        for _, provider in providers.items():
             provider.start()
 
         for listener in listeners:
@@ -42,25 +44,35 @@ class Orchestrator:
     def get_all_songs(self) -> list[Song]:
         songs: list[Song] = []
 
-        for provider in self.providers:
+        for _, provider in self.providers.items():
             songs.extend(provider.get_all_songs())
 
         return songs
 
+    def get_song(self, song_id: Id) -> Song:
+        return self.providers[song_id.provider_id].get_song(song_id.item_id)
+
     # Listener methods
 
-    def add_to_queue(self, channel: str, song: Song) -> None:
+    def add_to_queue(self, channel: str, song_id: Id) -> None:
+        song = self.get_song(song_id)
+
         self.channels[channel].add_to_queue(song)
 
     def play(self, channel: str) -> None:
         self.channels[channel].play()
 
+    def stop(self, channel: str) -> None:
+        self.channels[channel].stop()
+
     def cleanup_nodes(self) -> None:
         self.logger.info("Cleaning nodes...")
 
-        for provider in self.providers:
+        for _, provider in self.providers.items():
             if not provider.cleanup():
-                self.logger.warning(f'Provider {Colors.dim}"{provider.instance_id}"{Colors.reset} has failed cleanup!')
+                self.logger.warning(
+                    f'Provider {Colors.dim}"{provider.instance_id}"{Colors.reset} has failed cleanup!'
+                )
 
         for _, channel in self.channels.items():
             channel.cleanup_listeners()
