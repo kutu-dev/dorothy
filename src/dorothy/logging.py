@@ -2,7 +2,9 @@ import logging
 
 import colorama
 
-from . import Colors
+
+def dim(message: str) -> str:
+    return f"{colorama.Style.DIM}{message}{colorama.Style.RESET_ALL}"
 
 
 class ColorizedFormatter(logging.Formatter):
@@ -10,17 +12,19 @@ class ColorizedFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         colors = {
-            logging.DEBUG: Colors.cyan,
-            logging.INFO: Colors.green,
-            logging.WARNING: Colors.yellow,
-            logging.ERROR: Colors.red,
-            logging.CRITICAL: Colors.magenta,
+            logging.DEBUG: colorama.Fore.CYAN,
+            logging.INFO: colorama.Fore.GREEN,
+            logging.WARNING: colorama.Fore.YELLOW,
+            logging.ERROR: colorama.Fore.RED,
+            logging.CRITICAL: colorama.Fore.MAGENTA,
         }
 
-        colorized_log_level = f"[{colors[record.levelno]} %(levelname)s {Colors.reset}]"
+        colorized_log_level = (
+            f"[{colors[record.levelno]} %(levelname)s {colorama.Style.RESET_ALL}]"
+        )
 
         formatter = logging.Formatter(
-            f"{colorized_log_level} %(asctime)s {colorama.Style.DIM}(%(name)s){Colors.reset} %(message)s"
+            f'{colorized_log_level} %(asctime)s {dim("(%(name)s))")} %(message)s'
         )
 
         return formatter.format(record)
@@ -31,7 +35,9 @@ def get_logger(logger_name: str) -> logging.Logger:
     logger.setLevel(logging.DEBUG)
 
     ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
+    # TODO This should be managed by a global CLI flag when starting the daemon
+    #  or using an entry in the config (more prone to errors?)
+    ch.setLevel(logging.INFO)
 
     formatter = ColorizedFormatter()
 

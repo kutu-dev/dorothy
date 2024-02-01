@@ -1,27 +1,24 @@
-from . import Colors, logging
-from .models import Listener, Song
+from .logging import get_logger
+from .models import Song
+from .nodes import Listener
 
 
 class Channel:
-    def __init__(self, channel_id: str) -> None:
-        self.logger = logging.get_logger(channel_id)
-        self.queue: list[Song] = []
+    def __init__(self, channel_name: str) -> None:
         self.listeners: list[Listener] = []
+        self._logger = get_logger(channel_name)
+        self._queue: list[Song] = []
 
-        self.logger.info(
-            f'Instantiated channel {Colors.dim}"{channel_id}"{Colors.reset}'
-        )
+        self._logger.info(f'Instantiated channel "{channel_name}"')
 
     def add_to_queue(self, song: Song) -> None:
-        self.logger.info(
-            f'Adding song {Colors.dim}"{song.title}"{Colors.reset} to queue'
-        )
+        self._logger.info(f'Adding song "{song.title}" to queue')
 
-        self.queue.append(song)
+        self._queue.append(song)
 
     def play(self) -> None:
         for listener in self.listeners:
-            listener.play(self.queue[0])
+            listener.play(self._queue[0])
 
     def stop(self) -> None:
         for listener in self.listeners:
@@ -30,6 +27,6 @@ class Channel:
     def cleanup_listeners(self) -> None:
         for listener in self.listeners:
             if not listener.cleanup():
-                self.logger.warning(
-                    f'Listener {Colors.dim}"{listener.instance_id}"{Colors.reset} has failed cleanup!'
+                self._logger.warning(
+                    f'Listener "{str(listener.node_instance_path)}" has failed cleanup!'
                 )

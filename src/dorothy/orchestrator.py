@@ -1,60 +1,40 @@
-from . import Colors
 from .channel import Channel
 from .logging import get_logger
-from .models import Id, Listener, Provider, Song
+from .models import Song
+from .nodes import Provider
 
 
 class Orchestrator:
     """Abstraction between listeners and providers to the controllers"""
 
-    def __init__(
-        self, providers: dict[str, Provider], listeners: list[Listener]
-    ) -> None:
-        self.logger = get_logger(__name__)
-        self.logger.info("Wiring up the orchestrator")
+    def __init__(self) -> None:
+        self._logger = get_logger(__name__)
+        self._logger.info("Wiring up the orchestrator")
 
-        self.start_nodes(providers, listeners)
-
-        self.providers = providers
+        self.providers: dict[str, dict[str, dict[str, Provider]]] = {}
         self.channels: dict[str, Channel] = {}
 
-        self.initialize_channels(listeners)
-
-    @staticmethod
-    def start_nodes(providers: dict[str, Provider], listeners: list[Listener]) -> None:
-        for _, provider in providers.items():
-            provider.start()
-
-        for listener in listeners:
-            listener.start()
-
-    def initialize_channels(self, listeners: list[Listener]) -> None:
-        for listener in listeners:
-            # A listener after being loaded by the node_factory in the ConfigManager
-            # should only have one channel registered in its config
-            registered_channel = listener.instance_config["channels"][0]
-
-            if registered_channel not in self.channels:
-                self.channels[registered_channel] = Channel(registered_channel)
-
-            self.channels[registered_channel].listeners.append(listener)
+    def providers_generator(self):
+        for _, provider in self.providers.items():
+            for _, instance in provider.items():
+                for _, provider_object in instance.items():
+                    yield provider_object
 
     # Provider methods
-
     def get_all_songs(self) -> list[Song]:
         songs: list[Song] = []
 
-        for _, provider in self.providers.items():
+        for provider in self.providers_generator():
             songs.extend(provider.get_all_songs())
 
         return songs
 
-    def get_song(self, song_id: Id) -> Song:
+    # TODO NOT USING NEW ResIDs
+    def get_song(self, song_id) -> Song:
         return self.providers[song_id.provider_id].get_song(song_id.item_id)
 
     # Listener methods
-
-    def add_to_queue(self, channel: str, song_id: Id) -> None:
+    def add_to_queue(self, channel: str, song_id) -> None:
         song = self.get_song(song_id)
 
         self.channels[channel].add_to_queue(song)
@@ -66,12 +46,12 @@ class Orchestrator:
         self.channels[channel].stop()
 
     def cleanup_nodes(self) -> None:
-        self.logger.info("Cleaning nodes...")
+        self._logger.info("Cleaning nodes...")
 
-        for _, provider in self.providers.items():
+        for provider in self.providers_generator():
             if not provider.cleanup():
-                self.logger.warning(
-                    f'Provider {Colors.dim}"{provider.instance_id}"{Colors.reset} has failed cleanup!'
+                self._logger.warning(
+                    f'Provider "{provider.node_instance_path}" has failed cleanup!'
                 )
 
         for _, channel in self.channels.items():

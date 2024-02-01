@@ -1,26 +1,45 @@
 from multiprocessing import Process
+from typing import Any
 
 from aiohttp import web
-from aiohttp.web_request import Request
-from dorothy.config import ConfigSchema
-from dorothy.models import Controller, Id
+
+# Be aware that these types are not exported
+# by the __init__.py file of the package
+from aiohttp.web_request import FileField, Request
+from aiohttp.web_response import Response
+from dorothy.nodes import Controller, NodeInstancePath, NodeManifest
+from multidict import MultiDictProxy
+
+from dorothy.orchestrator import Orchestrator
 
 
 class RestController(Controller):
-    config_schema = ConfigSchema(
-        node_id="rest-controller", node_type=Controller, default_config={"port": 7171}
-    )
+    @classmethod
+    def get_node_manifest(cls) -> NodeManifest:
+        return NodeManifest(node_name="rest", default_config={"port": 6969})
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(
+        self,
+        config: dict[str, Any],
+        node_instance_path: NodeInstancePath,
+        orchestrator: Orchestrator,
+    ) -> None:
+        super().__init__(config, node_instance_path, orchestrator)
+        self._logger = self.get_logger()
+        self._port = int(self.config["port"])
+        self._rest_api_process = Process(target=self.start_rest_api_server)
 
     def start(self) -> None:
-        self.port = int(self.instance_config["port"])
-        self.rest_api_process = Process(target=self.start_rest_api_server)
-        self.rest_api_process.start()
+        self._rest_api_process.start()
+
+    def cleanup(self) -> bool:
+        self._rest_api_process.join()
+        self._rest_api_process.close()
+
+        return True
 
     def start_rest_api_server(self) -> None:
-        self.logger.info(f"Starting REST API server at localhost:{self.port}")
+        self._logger.info(f"Starting REST API server at localhost:{self._port}")
 
         self.app = web.Application()
         self.app.add_routes(
@@ -32,55 +51,67 @@ class RestController(Controller):
             ]
         )
 
-        web.run_app(self.app, port=self.port, print=False)
+        web.run_app(self.app, port=self._port, print=None)
 
-    async def get_all_songs(self, request: Request) -> None:
+    def valid_parameter(
+        self, data: MultiDictProxy[str | bytes | FileField], key: str
+    ) -> Response | str:
+        if key not in data:
+            return web.Response(status=422, reason=f'Missing parameter "{key}"')
+
+        if type(data[key]) is not str:
+            return web.Response(
+                status=422,
+                reason=f'Parameter "{key}" has an invalid type "{type(data[key])}" instead of "str"',
+            )
+
+        # Avoid Mypy not seeing that this will always be a string
+        return str(data[key])
+
+    async def get_all_songs(self, request: Request) -> Response:
         json_songs = []
         for song in self.orchestrator.get_all_songs():
             json_songs.append(vars(song))
 
         return web.json_response({"songs": json_songs})
 
-    async def add_to_queue(self, request: Request) -> None:
+    async def add_to_queue(self, request: Request) -> Response:
         data = await request.post()
 
-        if "provider_id" not in data:
-            return web.Response(status=422, reason='Missing parameter "provider_id"')
+        provider_id = self.valid_parameter(data, "provider_id")
+        if type(provider_id) is Response:
+            return provider_id
 
-        if "item_id" not in data:
-            return web.Response(status=422, reason='Missing parameter "item_id"')
+        item_id = self.valid_parameter(data, "item_id")
+        if type(item_id) is Response:
+            return item_id
 
-        if "channel" not in data:
-            return web.Response(status=422, reason='Missing parameter "channel"')
+        channel = self.valid_parameter(data, "channel")
+        if type(channel) is Response:
+            return channel
 
-        self.orchestrator.add_to_queue(
-            data["channel"], Id(data["provider_id"], data["item_id"])
-        )
+        self.orchestrator.add_to_queue(str(channel), Id(str(provider_id), str(item_id)))
 
         return web.Response()
 
-    async def play(self, request: Request) -> None:
+    async def play(self, request: Request) -> Response:
         data = await request.post()
 
-        if "channel" not in data:
-            return web.Response(status=422, reason='Missing parameter "channel"')
+        channel = self.valid_parameter(data, "channel")
+        if type(channel) is Response:
+            return channel
 
-        self.orchestrator.play(data["channel"])
+        self.orchestrator.play(str(channel))
 
         return web.Response()
 
-    async def stop(self, request: Request) -> None:
+    async def stop(self, request: Request) -> Response:
         data = await request.post()
 
-        if "channel" not in data:
-            return web.Response(status=422, reason='Missing parameter "channel"')
+        channel = self.valid_parameter(data, "channel")
+        if type(channel) is Response:
+            return channel
 
-        self.orchestrator.stop(data["channel"])
+        self.orchestrator.stop(str(channel))
 
         return web.Response()
-
-    def cleanup(self) -> bool:
-        self.rest_api_process.terminate()
-        self.rest_api_process.close()
-
-        return True

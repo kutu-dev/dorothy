@@ -1,22 +1,34 @@
+from typing import Any
 
-from dorothy.config import ConfigSchema
-from dorothy.models import Listener, Song
+import gi
+from dorothy.models import Song
+from dorothy.nodes import Listener, NodeInstancePath, NodeManifest
 
-import gi  # type: ignore [import-untyped]
 gi.require_version("Gst", "1.0")
-from gi.repository import Gst  # type: ignore [import-untyped]
+from gi.repository import Gst
 
 
 class PlaybinListener(Listener):
-    config_schema = ConfigSchema(node_id="playbin-listener", node_type=Listener)
+    @classmethod
+    def get_node_manifest(cls) -> NodeManifest:
+        return NodeManifest(
+            node_name="playbin",
+        )
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(
+        self, config: dict[str, Any], node_instance_path: NodeInstancePath
+    ) -> None:
+        super().__init__(config, node_instance_path)
+        self._logger = self.get_logger()
 
-    def start(self) -> None:
         Gst.init(None)
 
         self.player = Gst.ElementFactory.make("playbin", None)
+
+        # TODO This should be handle gracefully
+        if self.player is None:
+            raise Exception("PANIC")
+
         self.bus = self.player.get_bus()
 
         # Disable video
@@ -24,17 +36,24 @@ class PlaybinListener(Listener):
         self.player.set_property("video-sink", fakesink)
 
     def play(self, song: Song) -> None:
-        self.player.set_property("uri", song.uri)
-        res = self.player.set_state(Gst.State.PLAYING)
+        # TODO This should be handle gracefully
+        if self.player is None:
+            raise Exception("PANIC")
 
+        self.player.set_property("uri", song.uri)
+
+        res = self.player.set_state(Gst.State.PLAYING)
         if res == Gst.StateChangeReturn.FAILURE:
-            self.logger.error("Unable to start playing the song")
+            self._logger.error("Unable to start playing the song")
 
     def stop(self) -> None:
-        res = self.player.set_state(Gst.State.NULL)
+        # TODO This should be handle gracefully
+        if self.player is None:
+            raise Exception("PANIC")
 
+        res = self.player.set_state(Gst.State.NULL)
         if res == Gst.StateChangeReturn.FAILURE:
-            self.logger.error("Unable to stop the playing song")
+            self._logger.error("Unable to stop the playing song")
 
     def cleanup(self) -> bool:
         self.stop()
