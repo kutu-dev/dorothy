@@ -1,4 +1,7 @@
+import sys
 from logging import Logger
+
+from setproctitle import setproctitle
 
 from .config import ConfigManager
 from .logging import get_logger
@@ -8,6 +11,8 @@ from .plugin_handler import PluginHandler
 
 
 def start_daemon() -> None:
+    setproctitle("dorothy-daemon")
+
     logger = get_logger(__name__)
     config_manager = ConfigManager()
     plugin_handler = PluginHandler(config_manager)
@@ -17,7 +22,6 @@ def start_daemon() -> None:
         start_mainloop(nodes.orchestrator, nodes.controllers, logger)
     except KeyboardInterrupt:
         pass
-    """
     finally:
         nodes.orchestrator.cleanup_nodes()
 
@@ -27,7 +31,7 @@ def start_daemon() -> None:
                     f'Controller "{controller.node_instance_path}" has failed cleanup!'
                 )
 
-    sys.exit()"""
+    sys.exit()
 
 
 def start_mainloop(
@@ -38,8 +42,5 @@ def start_mainloop(
         controller.start()
 
     logger.info("Starting the mainloop...")
-
-    print(orchestrator.get_all_songs()[1].resource_id)
-
     while True:
         pass

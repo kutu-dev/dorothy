@@ -1,38 +1,38 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Self, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Type
+
+import dorothy.nodes as nodes
 
 if TYPE_CHECKING:
-    from dorothy.nodes import NodeInstancePath
+    from .nodes import NodeInstancePath
 
 
 class Resource(ABC):
+    @staticmethod
     @abstractmethod
-    def resource_name(self) -> str:
+    def resource_name() -> str:
         ...
-
-
-ResourceSubclass = TypeVar("ResourceSubclass", bound=Resource)
 
 
 @dataclass
 class ResourceId:
-    resource_type: Type[ResourceSubclass]
+    resource_type: Type[Resource]
     node_instance_path: "NodeInstancePath"
     unique_id: str
-
-    @classmethod
-    def deserialize(cls, serialized_resource: str) -> Self:
-        ...
 
     def sanitize(self, string: str) -> str:
         return string.replace("&", "&&").replace("#", "&#")
 
-    def __str__(self):
-        return f"{self.sanitize(self.resource_type.resource_name())}#{self.sanitize(str(self.node_instance_path))}#{self.sanitize(self.unique_id)}"
+    def __str__(self) -> str:
+        return (
+            f"{self.sanitize(self.resource_type.resource_name())}"
+            + f"#{self.sanitize(str(self.node_instance_path))}"
+            + f"#{self.sanitize(self.unique_id)}"
+        )
 
 
-class Song:
+class Song(Resource):
     def __init__(
         self, resource_id: ResourceId, uri: str | None = None, title: str | None = None
     ) -> None:
@@ -42,12 +42,40 @@ class Song:
 
     @property
     def __dict__(self) -> dict[str, Any]:
-        return {"id": vars(self.resource_id), "uri": self.uri, "title": self.title}
+        return {
+            "resource_id": str(self.resource_id),
+            "uri": self.uri,
+            "title": self.title,
+        }
 
     @__dict__.setter
     def __dict__(self, value: dict[str, Any]) -> None:
         self.dict = value
 
-    @classmethod
-    def resource_name(cls) -> str:
+    @staticmethod
+    def resource_name() -> str:
         return "song"
+
+
+def deserialize_resource_id(serialized_resource: str) -> ResourceId:
+    deserialized_data = ["", "", ""]
+    deserialized_index = 0
+
+    escape_next = False
+    for character in serialized_resource:
+        if character == "&" and not escape_next:
+            escape_next = True
+            continue
+
+        if character == "#" and not escape_next:
+            if deserialized_index < 2:
+                deserialized_index += 1
+            continue
+
+        deserialized_data[deserialized_index] += character
+
+    return ResourceId(
+        Song,
+        nodes.deserialize_node_instance_path(deserialized_data[1]),
+        deserialized_data[2],
+    )

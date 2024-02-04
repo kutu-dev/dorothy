@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from logging import Logger
-from typing import TYPE_CHECKING, Any, Self, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Type, TypeVar
 
 from .models import Song
 
@@ -24,15 +24,42 @@ class NodeInstancePath:
     node_name: str = field(default_factory=lambda: "")
     instance_name: str = field(default_factory=lambda: "")
 
-    @classmethod
-    def deserialize(cls, serialized_node: str) -> Self:
-        ...
-
     def sanitize(self, string: str) -> str:
         return string.replace("&", "&&").replace(">", "&>")
 
-    def __str__(self):
-        return f"{self.sanitize(self.plugin_name)}>{self.sanitize(self.node_type)}>{self.sanitize(self.node_name)}>{self.sanitize(self.instance_name)}"
+    def __str__(self) -> str:
+        return (
+            f"{self.sanitize(self.plugin_name)}"
+            + f">{self.sanitize(self.node_type)}"
+            + f">{self.sanitize(self.node_name)}"
+            + f">{self.sanitize(self.instance_name)}"
+        )
+
+
+def deserialize_node_instance_path(
+    serialized_node_instance_path: str,
+) -> NodeInstancePath:
+    deserialized_data = ["", "", "", ""]
+    deserialized_index = 0
+
+    escape_next = False
+    for character in serialized_node_instance_path:
+        if character == "&" and not escape_next:
+            escape_next = True
+            continue
+
+        if character == ">" and not escape_next:
+            deserialized_index += 1
+            continue
+
+        deserialized_data[deserialized_index] += character
+
+    return NodeInstancePath(
+        plugin_name=deserialized_data[0],
+        node_type=deserialized_data[1],
+        node_name=deserialized_data[2],
+        instance_name=deserialized_data[3],
+    )
 
 
 class Node(ABC):
@@ -88,7 +115,7 @@ class Provider(Node, ABC):
         ...
 
     @abstractmethod
-    def get_song(self, item_id: str) -> Song:
+    def get_song(self, serialized_song_id: str) -> Song | None:
         ...
 
 
@@ -127,8 +154,9 @@ class PluginManifest:
             if node_name in node_names:
                 self._logger.error(
                     (
-                        f"The node {node.__name__} has tried to register the name {node_name}",
-                        "in its manifest but it has already been registered",
+                        f"The node {node.__name__} has tried to register"
+                        + f" the name {node_name} in its manifest"
+                        + "but it has already been registered"
                     )
                 )
                 return False

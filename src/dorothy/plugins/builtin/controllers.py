@@ -7,10 +7,10 @@ from aiohttp import web
 # by the __init__.py file of the package
 from aiohttp.web_request import FileField, Request
 from aiohttp.web_response import Response
+from dorothy.models import deserialize_resource_id
 from dorothy.nodes import Controller, NodeInstancePath, NodeManifest
-from multidict import MultiDictProxy
-
 from dorothy.orchestrator import Orchestrator
+from multidict import MultiDictProxy
 
 
 class RestController(Controller):
@@ -44,10 +44,11 @@ class RestController(Controller):
         self.app = web.Application()
         self.app.add_routes(
             [
-                web.get("/get_all_songs", self.get_all_songs),
-                web.post("/add_to_queue", self.add_to_queue),
-                web.post("/play", self.play),
-                web.post("/stop", self.stop),
+                web.get("/songs", self.get_all_songs),
+                web.get("/songs/{song_resource_id}", self.get_song),
+                web.put("/channels/{channel_name}/queue", self.add_to_queue),
+                web.post("/channels/{channel_name}/play", self.play),
+                web.post("/channels/{channel_name}/stop", self.stop),
             ]
         )
 
@@ -55,18 +56,19 @@ class RestController(Controller):
 
     def valid_parameter(
         self, data: MultiDictProxy[str | bytes | FileField], key: str
-    ) -> Response | str:
+    ) -> tuple[str, Response | None]:
         if key not in data:
-            return web.Response(status=422, reason=f'Missing parameter "{key}"')
+            return "", web.Response(status=422, reason=f'Missing parameter "{key}"')
 
-        if type(data[key]) is not str:
-            return web.Response(
+        if isinstance(data[key], str):
+            return "", web.Response(
                 status=422,
-                reason=f'Parameter "{key}" has an invalid type "{type(data[key])}" instead of "str"',
+                reason=f'Parameter "{key}" has an invalid'
+                + f'type "{type(data[key])}" instead of "str"',
             )
 
-        # Avoid Mypy not seeing that this will always be a string
-        return str(data[key])
+        # Cast it to str because Mypy can't see that it will always be a string
+        return str(data[key]), None
 
     async def get_all_songs(self, request: Request) -> Response:
         json_songs = []
@@ -75,43 +77,29 @@ class RestController(Controller):
 
         return web.json_response({"songs": json_songs})
 
+    async def get_song(self, request: Request) -> Response:
+        resource_id = deserialize_resource_id(request.match_info["song_resource_id"])
+
+        return web.json_response(vars(self.orchestrator.get_song(resource_id)))
+
     async def add_to_queue(self, request: Request) -> Response:
         data = await request.post()
 
-        provider_id = self.valid_parameter(data, "provider_id")
-        if type(provider_id) is Response:
-            return provider_id
+        song_resource_id, error = self.valid_parameter(data, "song_resource_id")
+        if error is not None:
+            return error
 
-        item_id = self.valid_parameter(data, "item_id")
-        if type(item_id) is Response:
-            return item_id
-
-        channel = self.valid_parameter(data, "channel")
-        if type(channel) is Response:
-            return channel
-
-        self.orchestrator.add_to_queue(str(channel), Id(str(provider_id), str(item_id)))
+        resource_id = deserialize_resource_id(song_resource_id)
+        self.orchestrator.add_to_queue(request.match_info["channel_name"], resource_id)
 
         return web.Response()
 
     async def play(self, request: Request) -> Response:
-        data = await request.post()
-
-        channel = self.valid_parameter(data, "channel")
-        if type(channel) is Response:
-            return channel
-
-        self.orchestrator.play(str(channel))
+        self.orchestrator.play(request.match_info["channel_name"])
 
         return web.Response()
 
     async def stop(self, request: Request) -> Response:
-        data = await request.post()
-
-        channel = self.valid_parameter(data, "channel")
-        if type(channel) is Response:
-            return channel
-
-        self.orchestrator.stop(str(channel))
+        self.orchestrator.stop(request.match_info["channel_name"])
 
         return web.Response()

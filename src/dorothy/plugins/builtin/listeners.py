@@ -3,9 +3,11 @@ from typing import Any
 import gi
 from dorothy.models import Song
 from dorothy.nodes import Listener, NodeInstancePath, NodeManifest
+from dorothy.plugins.builtin.exceptions import FailedCreatePlaybinPlayer
 
 gi.require_version("Gst", "1.0")
-from gi.repository import Gst
+# Ignore the lint error raised by having a statement before an import
+from gi.repository import Gst  # noqa: E402
 
 
 class PlaybinListener(Listener):
@@ -23,12 +25,11 @@ class PlaybinListener(Listener):
 
         Gst.init(None)
 
-        self.player = Gst.ElementFactory.make("playbin", None)
+        player = Gst.ElementFactory.make("playbin", None)
+        if player is None:
+            raise FailedCreatePlaybinPlayer("The player could not be created")
 
-        # TODO This should be handle gracefully
-        if self.player is None:
-            raise Exception("PANIC")
-
+        self.player = player
         self.bus = self.player.get_bus()
 
         # Disable video
@@ -36,10 +37,6 @@ class PlaybinListener(Listener):
         self.player.set_property("video-sink", fakesink)
 
     def play(self, song: Song) -> None:
-        # TODO This should be handle gracefully
-        if self.player is None:
-            raise Exception("PANIC")
-
         self.player.set_property("uri", song.uri)
 
         res = self.player.set_state(Gst.State.PLAYING)
@@ -47,10 +44,6 @@ class PlaybinListener(Listener):
             self._logger.error("Unable to start playing the song")
 
     def stop(self) -> None:
-        # TODO This should be handle gracefully
-        if self.player is None:
-            raise Exception("PANIC")
-
         res = self.player.set_state(Gst.State.NULL)
         if res == Gst.StateChangeReturn.FAILURE:
             self._logger.error("Unable to stop the playing song")

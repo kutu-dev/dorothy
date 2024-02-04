@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any, Callable
 
-from dorothy.models import Song
+from dorothy.models import ResourceId, Song
 from dorothy.nodes import NodeInstancePath, NodeManifest, Provider
 from platformdirs import (
     user_desktop_dir,
@@ -11,8 +11,6 @@ from platformdirs import (
     user_pictures_dir,
     user_videos_dir,
 )
-
-from dorothy.models import ResourceId
 
 
 class FilesystemProvider(Provider):
@@ -130,11 +128,16 @@ class FilesystemProvider(Provider):
 
         return songs
 
-    def get_song(self, song_id: str) -> Song:
-        song_path = Path(song_id)
+    def get_song(self, song_unique_id: str) -> Song | None:
+        song_path = Path(song_unique_id)
+
+        if not song_path.is_file():
+            return None
+
+        song_resource_id = ResourceId(Song, self.node_instance_path, str(song_path))
 
         return Song(
-            Id(self.instance_id, song_path),
-            f"file://{song_path.absolute()}",
+            song_resource_id,
+            song_path.as_uri(),
             song_path.name,
         )

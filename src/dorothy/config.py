@@ -45,7 +45,7 @@ class ConfigManager:
 
     @staticmethod
     def generate_default_node_config(
-        node_config_file: Path, node: NodeSubclass
+        node_config_file: Path, node: Type[NodeSubclass]
     ) -> dict[str, Any]:
         default_config = {
             "default": {

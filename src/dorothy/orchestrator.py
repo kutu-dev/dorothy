@@ -1,6 +1,8 @@
+from typing import Iterator
+
 from .channel import Channel
 from .logging import get_logger
-from .models import Song
+from .models import ResourceId, Song
 from .nodes import Provider
 
 
@@ -14,7 +16,7 @@ class Orchestrator:
         self.providers: dict[str, dict[str, dict[str, Provider]]] = {}
         self.channels: dict[str, Channel] = {}
 
-    def providers_generator(self):
+    def providers_generator(self) -> Iterator[Provider]:
         for _, provider in self.providers.items():
             for _, instance in provider.items():
                 for _, provider_object in instance.items():
@@ -29,13 +31,24 @@ class Orchestrator:
 
         return songs
 
-    # TODO NOT USING NEW ResIDs
-    def get_song(self, song_id) -> Song:
-        return self.providers[song_id.provider_id].get_song(song_id.item_id)
+    def get_song(self, song_resource_id: ResourceId) -> Song | None:
+        if song_resource_id.resource_type is not Song:
+            return None
+
+        plugin_name: str = song_resource_id.node_instance_path.plugin_name
+        node_name: str = song_resource_id.node_instance_path.node_name
+        instance_name: str = song_resource_id.node_instance_path.instance_name
+
+        return self.providers[plugin_name][node_name][instance_name].get_song(
+            song_resource_id.unique_id
+        )
 
     # Listener methods
-    def add_to_queue(self, channel: str, song_id) -> None:
-        song = self.get_song(song_id)
+    def add_to_queue(self, channel: str, song_resource_id: ResourceId) -> None:
+        song = self.get_song(song_resource_id)
+
+        if song is None:
+            return
 
         self.channels[channel].add_to_queue(song)
 
