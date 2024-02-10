@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any, Callable
 
-from dorothy.models import ResourceId, Song
+from dorothy.models import Album, ResourceId, Song
 from dorothy.nodes import NodeInstancePath, NodeManifest, Provider
 from platformdirs import (
     user_desktop_dir,
@@ -12,7 +12,6 @@ from platformdirs import (
     user_videos_dir,
 )
 from tinytag import TinyTag
-from dorothy.models import Album
 
 
 class FilesystemProvider(Provider):

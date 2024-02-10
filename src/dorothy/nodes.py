@@ -1,9 +1,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from logging import Logger
 from typing import TYPE_CHECKING, Any, Type, TypeVar
 
-from .models import Song, Album
+from .models import Album, Song
 
 if TYPE_CHECKING:
     from .orchestrator import Orchestrator
@@ -141,6 +140,10 @@ class Listener(Node, ABC):
 
     @abstractmethod
     def play(self, song: Song) -> None:
+        ...
+
+    @abstractmethod
+    def pause(self) -> None:
         ...
 
     @abstractmethod

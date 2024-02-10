@@ -1,14 +1,20 @@
 from multiprocessing import Process
 from typing import Any
-from aiohttp_apispec import docs, json_schema, setup_aiohttp_apispec, response_schema
-from aiohttp_apispec import validation_middleware
-from marshmallow import Schema, fields
+
 from aiohttp import web
-from aiohttp.web_request import FileField, Request
+from aiohttp.web_request import Request
 from aiohttp.web_response import Response
+from aiohttp_apispec import (
+    docs,
+    json_schema,
+    response_schema,
+    setup_aiohttp_apispec,
+    validation_middleware,
+)
 from dorothy.models import deserialize_resource_id
 from dorothy.nodes import Controller, NodeInstancePath, NodeManifest
 from dorothy.orchestrator import Orchestrator
+from marshmallow import Schema, fields
 
 
 class SongResourceId(Schema):
@@ -73,6 +79,8 @@ class RestController(Controller):
                 ),
                 web.put("/channels/{channel_name}/queue", self.add_to_queue),
                 web.post("/channels/{channel_name}/play", self.play),
+                web.post("/channels/{channel_name}/pause", self.pause),
+                web.post("/channels/{channel_name}/play_pause", self.play_pause),
                 web.post("/channels/{channel_name}/stop", self.stop),
                 web.get("/albums", self.get_all_albums, allow_head=False),
                 web.get(
@@ -150,16 +158,37 @@ class RestController(Controller):
 
     @docs(
         tags=["channels"],
-        summary="Start playing the queue",
+        summary="Start the playback",
     )
     async def play(self, request: Request) -> Response:
+        self._logger.info("Starting the playback")
         self.orchestrator.play(request.match_info["channel_name"])
 
         return web.Response()
 
     @docs(
         tags=["channels"],
-        summary="Stop playing the queue",
+        summary="Pause the playback",
+    )
+    async def pause(self, request: Request) -> Response:
+        self._logger.info("Pausing the playback")
+        self.orchestrator.pause(request.match_info["channel_name"])
+
+        return web.Response()
+
+    @docs(
+        tags=["channels"],
+        summary="Start or pause the playback",
+    )
+    async def play_pause(self, request: Request) -> Response:
+        self._logger.info("Starting/pausing the playback")
+        self.orchestrator.play_pause(request.match_info["channel_name"])
+
+        return web.Response()
+
+    @docs(
+        tags=["channels"],
+        summary="Stop the playback and discard the current song from the queue",
     )
     async def stop(self, request: Request) -> Response:
         self.orchestrator.stop(request.match_info["channel_name"])

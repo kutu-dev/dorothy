@@ -2,7 +2,7 @@ from typing import Iterator
 
 from .channel import Channel
 from .logging import get_logger
-from .models import ResourceId, Song, Album
+from .models import Album, ResourceId, Song
 from .nodes import Provider
 
 
@@ -86,6 +86,12 @@ class Orchestrator:
 
     def play(self, channel: str) -> None:
         self.channels[channel].play()
+
+    def pause(self, channel: str) -> None:
+        self.channels[channel].pause()
+
+    def play_pause(self, channel: str) -> None:
+        self.channels[channel].play_pause()
 
     def stop(self, channel: str) -> None:
         self.channels[channel].stop()

@@ -1,16 +1,14 @@
-import curses
 import sys
 from typing import Annotated, Optional
-from curses import wrapper
+
 import psutil
-import requests
 import typer
 from rich.console import Console
 
 from src.dorothy.tui import Tui
+
 from . import __version__
 from .daemon import start_daemon
-
 
 app = typer.Typer(
     no_args_is_help=True, context_settings={"help_option_names": ["-h", "--help"]}
