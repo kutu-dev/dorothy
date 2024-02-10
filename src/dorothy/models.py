@@ -22,13 +22,13 @@ class ResourceId:
     unique_id: str
 
     def sanitize(self, string: str) -> str:
-        return string.replace("&", "&&").replace("#", "&#")
+        return string.replace("&", "&&").replace("@", "&@")
 
     def __str__(self) -> str:
         return (
             f"{self.sanitize(self.resource_type.resource_name())}"
-            + f"#{self.sanitize(str(self.node_instance_path))}"
-            + f"#{self.sanitize(self.unique_id)}"
+            + f"@{self.sanitize(str(self.node_instance_path))}"
+            + f"@{self.sanitize(self.unique_id)}"
         )
 
 
@@ -57,6 +57,27 @@ class Song(Resource):
         return "song"
 
 
+class Album(Resource):
+    def __init__(self, resource_id: ResourceId, title: str | None = None) -> None:
+        self.resource_id = resource_id
+        self.title = title
+
+    @property
+    def __dict__(self) -> dict[str, Any]:
+        return {
+            "resource_id": str(self.resource_id),
+            "title": self.title,
+        }
+
+    @__dict__.setter
+    def __dict__(self, value: dict[str, Any]) -> None:
+        self.dict = value
+
+    @staticmethod
+    def resource_name() -> str:
+        return "album"
+
+
 def deserialize_resource_id(serialized_resource: str) -> ResourceId:
     deserialized_data = ["", "", ""]
     deserialized_index = 0
@@ -67,15 +88,24 @@ def deserialize_resource_id(serialized_resource: str) -> ResourceId:
             escape_next = True
             continue
 
-        if character == "#" and not escape_next:
+        if character == "@" and not escape_next:
             if deserialized_index < 2:
                 deserialized_index += 1
             continue
 
         deserialized_data[deserialized_index] += character
 
+    resource_type: Type[Resource]
+    match deserialized_data[0]:
+        case "song":
+            resource_type = Song
+        case "album":
+            resource_type = Album
+        case _:
+            raise ValueError(f"Unknown resource type: {deserialized_data[0]}")
+
     return ResourceId(
-        Song,
+        resource_type,
         nodes.deserialize_node_instance_path(deserialized_data[1]),
         deserialized_data[2],
     )

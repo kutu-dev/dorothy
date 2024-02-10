@@ -2,7 +2,7 @@ from typing import Iterator
 
 from .channel import Channel
 from .logging import get_logger
-from .models import ResourceId, Song
+from .models import ResourceId, Song, Album
 from .nodes import Provider
 
 
@@ -43,6 +43,38 @@ class Orchestrator:
             song_resource_id.unique_id
         )
 
+    def get_all_albums(self) -> list[Album]:
+        albums: list[Album] = []
+
+        for provider in self.providers_generator():
+            albums.extend(provider.get_all_albums())
+
+        return albums
+
+    def get_album(self, album_resource_id: ResourceId) -> Album | None:
+        if album_resource_id.resource_type is not Album:
+            return None
+
+        plugin_name: str = album_resource_id.node_instance_path.plugin_name
+        node_name: str = album_resource_id.node_instance_path.node_name
+        instance_name: str = album_resource_id.node_instance_path.instance_name
+
+        return self.providers[plugin_name][node_name][instance_name].get_album(
+            album_resource_id.unique_id
+        )
+
+    def get_songs_from_album(self, album_resource_id: ResourceId):
+        if album_resource_id.resource_type is not Album:
+            return None
+
+        plugin_name: str = album_resource_id.node_instance_path.plugin_name
+        node_name: str = album_resource_id.node_instance_path.node_name
+        instance_name: str = album_resource_id.node_instance_path.instance_name
+
+        return self.providers[plugin_name][node_name][
+            instance_name
+        ].get_songs_from_album(album_resource_id.unique_id)
+
     # Listener methods
     def add_to_queue(self, channel: str, song_resource_id: ResourceId) -> None:
         song = self.get_song(song_resource_id)
@@ -57,6 +89,9 @@ class Orchestrator:
 
     def stop(self, channel: str) -> None:
         self.channels[channel].stop()
+
+    def get_queue(self, channel: str) -> list[Song]:
+        return self.channels[channel].queue
 
     def cleanup_nodes(self) -> None:
         self._logger.info("Cleaning nodes...")

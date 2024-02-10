@@ -11,6 +11,8 @@ from platformdirs import (
     user_pictures_dir,
     user_videos_dir,
 )
+from tinytag import TinyTag
+from dorothy.models import Album
 
 
 class FilesystemProvider(Provider):
@@ -25,7 +27,6 @@ class FilesystemProvider(Provider):
         self, config: dict[str, Any], node_instance_path: NodeInstancePath
     ) -> None:
         super().__init__(config, node_instance_path)
-        self._logger = self.get_logger()
 
         self._logger.info("Parsing source paths in the config...")
         self.paths = self.parse_paths(self.config["paths"])
@@ -33,6 +34,11 @@ class FilesystemProvider(Provider):
 
         self._logger.info("Parsing ignore paths in the config...")
         self.exclude_paths = self.parse_paths(self.config["exclude_paths"])
+
+        self.songs_paths = self.get_songs_paths()
+
+        self.albums: dict[str, list[Path]] = {}
+        self.load_songs_metadata(self.songs_paths)
 
     def parse_paths(self, raw_paths: list[str]) -> list[Path]:
         special_words: dict[str, Callable[[], str]] = {
@@ -108,8 +114,8 @@ class FilesystemProvider(Provider):
 
         return False
 
-    def get_all_songs(self) -> list[Song]:
-        songs: list[Song] = []
+    def get_songs_paths(self) -> list[Path]:
+        songs_paths: list[Path] = []
 
         for path in self.paths:
             for file in path.glob("**/*"):
@@ -119,12 +125,29 @@ class FilesystemProvider(Provider):
                 if self.is_file_ignored(file):
                     continue
 
-                song_resource_id = ResourceId(
-                    Song, self.node_instance_path, str(file.absolute())
-                )
-                songs.append(
-                    Song(song_resource_id, f"file://{file.absolute()}", file.name)
-                )
+                songs_paths.append(file)
+
+        return songs_paths
+
+    def load_songs_metadata(self, songs_paths: list[Path]) -> None:
+        for song_path in songs_paths:
+            metadata = TinyTag.get(song_path)
+
+            album_name = metadata.album if metadata.album is not None else "unknown"
+
+            self.albums.setdefault(album_name, []).append(song_path)
+
+    def get_all_songs(self) -> list[Song]:
+        songs: list[Song] = []
+
+        for song_path in self.songs_paths:
+            song_resource_id = ResourceId(
+                Song, self.node_instance_path, str(song_path.absolute())
+            )
+
+            songs.append(
+                Song(song_resource_id, f"file://{song_path.absolute()}", song_path.name)
+            )
 
         return songs
 
@@ -141,3 +164,34 @@ class FilesystemProvider(Provider):
             song_path.as_uri(),
             song_path.name,
         )
+
+    def get_all_albums(self) -> list[Album]:
+        albums: list[Album] = []
+
+        for album_name in self.albums.keys():
+            album_resource_id = ResourceId(Album, self.node_instance_path, album_name)
+
+            albums.append(Album(album_resource_id, album_name))
+
+        return albums
+
+    def get_album(self, album_unique_id: str) -> Album:
+        return Album(
+            ResourceId(Album, self.node_instance_path, album_unique_id), album_unique_id
+        )
+
+    def get_songs_from_album(self, album_unique_id: str) -> list[Song]:
+        songs: list[Song] = []
+
+        songs_paths = self.albums[album_unique_id]
+
+        for song_path in songs_paths:
+            song_resource_id = ResourceId(
+                Song, self.node_instance_path, str(song_path.absolute())
+            )
+
+            songs.append(
+                Song(song_resource_id, f"file://{song_path.absolute()}", song_path.name)
+            )
+
+        return songs

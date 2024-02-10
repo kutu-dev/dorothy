@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from logging import Logger
 from typing import TYPE_CHECKING, Any, Type, TypeVar
 
-from .models import Song
+from .models import Song, Album
 
 if TYPE_CHECKING:
     from .orchestrator import Orchestrator
@@ -68,9 +68,7 @@ class Node(ABC):
     ) -> None:
         self.config = config
         self.node_instance_path = node_instance_path
-
-    def get_logger(self) -> Logger:
-        return get_logger(str(self.node_instance_path))
+        self._logger = get_logger(str(self.node_instance_path))
 
     @classmethod
     @abstractmethod
@@ -115,7 +113,19 @@ class Provider(Node, ABC):
         ...
 
     @abstractmethod
-    def get_song(self, serialized_song_id: str) -> Song | None:
+    def get_song(self, unique_song_id: str) -> Song | None:
+        ...
+
+    @abstractmethod
+    def get_all_albums(self) -> list[Album]:
+        ...
+
+    @abstractmethod
+    def get_album(self, unique_album_id: str) -> Song | None:
+        ...
+
+    @abstractmethod
+    def get_songs_from_album(self, unique_album_id: str) -> list[Song]:
         ...
 
 

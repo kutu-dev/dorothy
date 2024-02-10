@@ -21,7 +21,6 @@ class PlaybinListener(Listener):
         self, config: dict[str, Any], node_instance_path: NodeInstancePath
     ) -> None:
         super().__init__(config, node_instance_path)
-        self._logger = self.get_logger()
 
         Gst.init(None)
 

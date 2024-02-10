@@ -1,16 +1,37 @@
 from multiprocessing import Process
 from typing import Any
-
+from aiohttp_apispec import docs, json_schema, setup_aiohttp_apispec, response_schema
+from aiohttp_apispec import validation_middleware
+from marshmallow import Schema, fields
 from aiohttp import web
-
-# Be aware that these types are not exported
-# by the __init__.py file of the package
 from aiohttp.web_request import FileField, Request
 from aiohttp.web_response import Response
 from dorothy.models import deserialize_resource_id
 from dorothy.nodes import Controller, NodeInstancePath, NodeManifest
 from dorothy.orchestrator import Orchestrator
-from multidict import MultiDictProxy
+
+
+class SongResourceId(Schema):
+    song_resource_id = fields.Str(required=True)
+
+
+class Song(Schema):
+    resource_id = fields.Str(required=True)
+    uri = fields.Str()
+    title = fields.Str()
+
+
+class SongList(Schema):
+    songs = fields.List(fields.Nested(Song), required=True)
+
+
+class Album(Schema):
+    resource_id = fields.Str(required=True)
+    title = fields.Str()
+
+
+class AlbumList(Schema):
+    albums = fields.List(fields.Nested(Album), required=True)
 
 
 class RestController(Controller):
@@ -25,8 +46,7 @@ class RestController(Controller):
         orchestrator: Orchestrator,
     ) -> None:
         super().__init__(config, node_instance_path, orchestrator)
-        self._logger = self.get_logger()
-        self._port = int(self.config["port"])
+
         self._rest_api_process = Process(target=self.start_rest_api_server)
 
     def start(self) -> None:
@@ -39,37 +59,51 @@ class RestController(Controller):
         return True
 
     def start_rest_api_server(self) -> None:
-        self._logger.info(f"Starting REST API server at localhost:{self._port}")
+        port = int(self.config["port"])
 
-        self.app = web.Application()
-        self.app.add_routes(
+        self._logger.info(f"Starting REST API server at localhost:{port}")
+
+        app = web.Application()
+        app.add_routes(
             [
-                web.get("/songs", self.get_all_songs),
-                web.get("/songs/{song_resource_id}", self.get_song),
+                web.get("/songs", self.get_all_songs, allow_head=False),
+                web.get("/songs/{song_resource_id}", self.get_song, allow_head=False),
+                web.get(
+                    "/channels/{channel_name}/queue", self.list_queue, allow_head=False
+                ),
                 web.put("/channels/{channel_name}/queue", self.add_to_queue),
                 web.post("/channels/{channel_name}/play", self.play),
                 web.post("/channels/{channel_name}/stop", self.stop),
+                web.get("/albums", self.get_all_albums, allow_head=False),
+                web.get(
+                    "/albums/{album_resource_id}", self.get_album, allow_head=False
+                ),
+                web.get(
+                    "/albums/{album_resource_id}/songs",
+                    self.get_songs_from_album,
+                    allow_head=False,
+                ),
             ]
         )
 
-        web.run_app(self.app, port=self._port, print=None)
+        setup_aiohttp_apispec(
+            app=app,
+            title="Dorothy REST API Server",
+            version="v1",
+            url="/api/docs/swagger.json",
+            swagger_path="/api/docs",
+            in_place=True,
+        )
 
-    def valid_parameter(
-        self, data: MultiDictProxy[str | bytes | FileField], key: str
-    ) -> tuple[str, Response | None]:
-        if key not in data:
-            return "", web.Response(status=422, reason=f'Missing parameter "{key}"')
+        app.middlewares.append(validation_middleware)
 
-        if isinstance(data[key], str):
-            return "", web.Response(
-                status=422,
-                reason=f'Parameter "{key}" has an invalid'
-                + f'type "{type(data[key])}" instead of "str"',
-            )
+        web.run_app(app, port=port, print=None)
 
-        # Cast it to str because Mypy can't see that it will always be a string
-        return str(data[key]), None
-
+    @docs(
+        tags=["songs"],
+        summary="Get all songs registered by the providers",
+    )
+    @response_schema(SongList, 200)
     async def get_all_songs(self, request: Request) -> Response:
         json_songs = []
         for song in self.orchestrator.get_all_songs():
@@ -77,29 +111,93 @@ class RestController(Controller):
 
         return web.json_response({"songs": json_songs})
 
+    @docs(
+        tags=["songs"],
+        summary="Get all data of a song",
+    )
+    @response_schema(Song, 200)
     async def get_song(self, request: Request) -> Response:
         resource_id = deserialize_resource_id(request.match_info["song_resource_id"])
 
         return web.json_response(vars(self.orchestrator.get_song(resource_id)))
 
+    @docs(
+        tags=["channels"],
+        summary="List all songs in the queue",
+    )
+    async def list_queue(self, request: Request) -> Response:
+        json_songs = [
+            vars(song)
+            for song in self.orchestrator.get_queue(request.match_info["channel_name"])
+        ]
+
+        return web.json_response(json_songs)
+
+    @docs(
+        tags=["channels"],
+        summary="Add song to the queue",
+    )
+    @json_schema(SongResourceId)
     async def add_to_queue(self, request: Request) -> Response:
-        data = await request.post()
+        data = await request.json()
 
-        song_resource_id, error = self.valid_parameter(data, "song_resource_id")
-        if error is not None:
-            return error
-
-        resource_id = deserialize_resource_id(song_resource_id)
-        self.orchestrator.add_to_queue(request.match_info["channel_name"], resource_id)
+        song_resource_id = deserialize_resource_id(data["song_resource_id"])
+        self.orchestrator.add_to_queue(
+            request.match_info["channel_name"], song_resource_id
+        )
 
         return web.Response()
 
+    @docs(
+        tags=["channels"],
+        summary="Start playing the queue",
+    )
     async def play(self, request: Request) -> Response:
         self.orchestrator.play(request.match_info["channel_name"])
 
         return web.Response()
 
+    @docs(
+        tags=["channels"],
+        summary="Stop playing the queue",
+    )
     async def stop(self, request: Request) -> Response:
         self.orchestrator.stop(request.match_info["channel_name"])
 
         return web.Response()
+
+    @docs(
+        tags=["albums"],
+        summary="Get all albums registered by the providers",
+    )
+    @response_schema(AlbumList, 200)
+    async def get_all_albums(self, request: Request) -> Response:
+        json_albums = []
+        for album in self.orchestrator.get_all_albums():
+            json_albums.append(vars(album))
+
+        return web.json_response({"albums": json_albums})
+
+    @docs(
+        tags=["albums"],
+        summary="Get all data of a album",
+    )
+    @response_schema(Album, 200)
+    async def get_album(self, request: Request) -> Response:
+        resource_id = deserialize_resource_id(request.match_info["album_resource_id"])
+
+        return web.json_response(vars(self.orchestrator.get_album(resource_id)))
+
+    @docs(
+        tags=["albums"],
+        summary="Get all songs from an album",
+    )
+    @response_schema(SongList, 200)
+    async def get_songs_from_album(self, request: Request) -> Response:
+        resource_id = deserialize_resource_id(request.match_info["album_resource_id"])
+
+        json_songs = [
+            vars(song) for song in self.orchestrator.get_songs_from_album(resource_id)
+        ]
+
+        return web.json_response({"songs": json_songs})

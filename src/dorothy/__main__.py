@@ -1,33 +1,16 @@
+import curses
 import sys
 from typing import Annotated, Optional
-
+from curses import wrapper
 import psutil
+import requests
 import typer
 from rich.console import Console
 
+from src.dorothy.tui import Tui
 from . import __version__
 from .daemon import start_daemon
 
-# TODO CODE REFACTOR:
-#  - --> --> --> --> PREGUNTARLE A ERIC SI DEBO HACER UNA TUI O UNA CLI <-- <-- <-- <--
-#  - Make logger use rich instead of colorama(?)
-#  - LOGGER OUTPUT TO STDERR(?)
-#  - DISABLE COLOR IN PIPING
-#  - Fix circular import in nodes and models and add converting string to Resource type
-#  - Reduce duplicated code in PluginHandler
-
-# TODO Priority:
-#  - Reduce repetition in post data validations on RestController
-#  - make a global config manager (in ConfigManager?)
-#     for Dorothy configs like (use_splash/skip_splash,
-#     colorless mode, goodbye message , etc)
-#  - URI transformers (when Discord bot is in the works)
-#  - Refactor load_plugins and node_factory
-
-# TODO Exception overhaul:
-#  - Invalid config checker
-#  - When a Exception occurs loading a plugin
-#  - When cleanup instead of return bool (?)
 
 app = typer.Typer(
     no_args_is_help=True, context_settings={"help_option_names": ["-h", "--help"]}
@@ -52,6 +35,11 @@ def init() -> None:
             pass
 
     start_daemon()
+
+
+@app.command()
+def tui() -> None:
+    Tui()
 
 
 def version_callback(value: bool) -> None:
