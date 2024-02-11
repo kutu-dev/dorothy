@@ -148,7 +148,7 @@ class FilesystemProvider(Provider):
             )
 
             songs.append(
-                Song(song_resource_id, f"file://{song_path.absolute()}", song_path.name)
+                Song(song_resource_id, song_path.absolute().as_uri(), song_path.name)
             )
 
         return songs
@@ -193,7 +193,7 @@ class FilesystemProvider(Provider):
             )
 
             songs.append(
-                Song(song_resource_id, f"file://{song_path.absolute()}", song_path.name)
+                Song(song_resource_id, song_path.absolute().as_uri(), song_path.name)
             )
 
         return songs

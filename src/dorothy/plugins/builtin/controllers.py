@@ -1,4 +1,4 @@
-from multiprocessing import Process
+from multiprocessing import Process, set_start_method
 from typing import Any
 
 from aiohttp import web
@@ -15,7 +15,6 @@ from dorothy.models import deserialize_resource_id
 from dorothy.nodes import Controller, NodeInstancePath, NodeManifest
 from dorothy.orchestrator import Orchestrator
 from marshmallow import Schema, fields
-
 
 class SongResourceId(Schema):
     song_resource_id = fields.Str(required=True)
@@ -53,7 +52,7 @@ class RestController(Controller):
     ) -> None:
         super().__init__(config, node_instance_path, orchestrator)
 
-        self._rest_api_process = Process(target=self.start_rest_api_server)
+        self._rest_api_process = Process(target=self.start_rest_api_server, daemon=True)
 
     def start(self) -> None:
         self._rest_api_process.start()

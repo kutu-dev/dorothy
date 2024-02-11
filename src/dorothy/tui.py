@@ -199,6 +199,7 @@ class Tui:
                 case "\n":
                     self.state.action()
                     self.update_list()
+                    self.debug_log(self.state.list_buffer[self.state.list_index]["uri"])
 
                 case " ":
                     self.play_pause()
