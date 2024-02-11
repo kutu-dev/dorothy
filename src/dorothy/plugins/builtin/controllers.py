@@ -77,10 +77,14 @@ class RestController(Controller):
                     "/channels/{channel_name}/queue", self.list_queue, allow_head=False
                 ),
                 web.put("/channels/{channel_name}/queue", self.add_to_queue),
+                web.put("/channels/{channel_name}/queue/{position}", self.insert_to_queue),
+                web.delete("/channels/{channel_name}/queue/{position}", self.remove_from_queue),
+                web.post("/channels/{channel_name}/queue/{position}/play", self.play_from_queue_given_index),
                 web.post("/channels/{channel_name}/play", self.play),
                 web.post("/channels/{channel_name}/pause", self.pause),
                 web.post("/channels/{channel_name}/play_pause", self.play_pause),
                 web.post("/channels/{channel_name}/stop", self.stop),
+                web.post("/channels/{channel_name}/skip", self.skip),
                 web.get("/albums", self.get_all_albums, allow_head=False),
                 web.get(
                     "/albums/{album_resource_id}", self.get_album, allow_head=False
@@ -142,7 +146,7 @@ class RestController(Controller):
 
     @docs(
         tags=["channels"],
-        summary="Add song to the queue",
+        summary="Add song to the queue at the end",
     )
     @json_schema(SongResourceId)
     async def add_to_queue(self, request: Request) -> Response:
@@ -151,6 +155,62 @@ class RestController(Controller):
         song_resource_id = deserialize_resource_id(data["song_resource_id"])
         self.orchestrator.add_to_queue(
             request.match_info["channel_name"], song_resource_id
+        )
+
+        return web.Response()
+
+    @docs(
+        tags=["channels"],
+        summary='Add song to the queue at the position specified by "{position}" ',
+    )
+    @json_schema(SongResourceId)
+    async def insert_to_queue(self, request: Request) -> Response:
+        data = await request.json()
+
+        if not request.match_info["position"].isdigit():
+            return web.Response(status=422, text="The position must be an integer")
+
+        position = int(request.match_info["position"])
+
+        song_resource_id = deserialize_resource_id(data["song_resource_id"])
+        self.orchestrator.insert_to_queue(
+            request.match_info["channel_name"], song_resource_id, position
+        )
+
+        return web.Response()
+
+    @docs(
+        tags=["channels"],
+        summary='Remove songs from the queue at the position specified by "{position}" ',
+    )
+    @json_schema(SongResourceId)
+    async def remove_from_queue(self, request: Request) -> Response:
+        data = await request.json()
+
+        if not request.match_info["position"].isdigit():
+            return web.Response(status=422, text="The position must be an integer")
+
+        position = int(request.match_info["position"])
+
+        song_resource_id = deserialize_resource_id(data["song_resource_id"])
+        self.orchestrator.remove_from_queue(
+            request.match_info["channel_name"], position
+        )
+
+        return web.Response()
+
+    @docs(
+        tags=["channels"],
+        summary='Start playing the song from the queue at the position specified by "{position}" ',
+    )
+    async def play_from_queue_given_index(self, request: Request) -> Response:
+        if not request.match_info["position"].isdigit():
+            return web.Response(status=422, text="The position must be an integer")
+
+        position = int(request.match_info["position"])
+
+        self.orchestrator.play_from_queue_given_index(
+            request.match_info["channel_name"], position
         )
 
         return web.Response()
@@ -191,6 +251,15 @@ class RestController(Controller):
     )
     async def stop(self, request: Request) -> Response:
         self.orchestrator.stop(request.match_info["channel_name"])
+
+        return web.Response()
+
+    @docs(
+        tags=["channels"],
+        summary="Skip the current playing song from the queue and starts playing the next one if there's any",
+    )
+    async def skip(self, request: Request) -> Response:
+        self.orchestrator.skip(request.match_info["channel_name"])
 
         return web.Response()
 

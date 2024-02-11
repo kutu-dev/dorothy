@@ -77,12 +77,18 @@ class Orchestrator:
 
     # Listener methods
     def add_to_queue(self, channel: str, song_resource_id: ResourceId) -> None:
+        self.insert_to_queue(channel, song_resource_id, 0)
+
+    def insert_to_queue(self, channel: str, song_resource_id: ResourceId, insert_position: int) -> None:
         song = self.get_song(song_resource_id)
 
         if song is None:
             return
 
-        self.channels[channel].add_to_queue(song)
+        self.channels[channel].insert(song, insert_position)
+
+    def remove_from_queue(self, channel: str, remove_position: int) -> None:
+        self.channels[channel].remove_from_queue(remove_position)
 
     def play(self, channel: str) -> None:
         self.channels[channel].play()
@@ -96,8 +102,14 @@ class Orchestrator:
     def stop(self, channel: str) -> None:
         self.channels[channel].stop()
 
+    def skip(self, channel: str) -> None:
+        self.channels[channel].skip()
+
     def get_queue(self, channel: str) -> list[Song]:
         return self.channels[channel].queue
+
+    def play_from_queue_given_index(self, channel: str, play_position: int) -> None:
+        self.channels[channel].play_from_queue_given_index(play_position)
 
     def cleanup_nodes(self) -> None:
         self._logger.info("Cleaning nodes...")

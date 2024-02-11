@@ -33,7 +33,7 @@ class Queue(State):
         ).json()
 
     def action(self) -> None:
-        pass
+        requests.post(f"http://localhost:6969/channels/main/queue/{self.list_index}/play")
 
     def back(self) -> None:
         pass
@@ -199,7 +199,7 @@ class Tui:
                 case "\n":
                     self.state.action()
                     self.update_list()
-                    self.debug_log(self.state.list_buffer[self.state.list_index]["uri"])
+                    self.debug_log(f"http://localhost:6969/channels/main/queue/{self.state.list_index}/play")
 
                 case " ":
                     self.play_pause()

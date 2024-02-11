@@ -3,8 +3,8 @@
 Remember that this is an indicative, and you shouldn't use it as the only reference when developing.
 
 - [ ] Refine the REST API
+- - [ ] Split play and resume and make `play_from_queue_given_index` work in the TUI.
   - [ ] Improve the summary of play_pause
-  - [ ] Implement skipping
   - [ ] Implement queue song moving
 - [ ] Make a fully working queue frontend with the TUI
   - [ ] Implement all the endpoints from the API
