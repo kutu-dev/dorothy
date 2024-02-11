@@ -181,7 +181,7 @@ class RestController(Controller):
         summary="Start or pause the playback",
     )
     async def play_pause(self, request: Request) -> Response:
-        self._logger.info("Starting/pausing the playback")
+        self._logger.info("Start/pause the playback")
         self.orchestrator.play_pause(request.match_info["channel_name"])
 
         return web.Response()

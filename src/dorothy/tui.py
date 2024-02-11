@@ -1,15 +1,15 @@
 import curses
 import sys
 from abc import ABC, abstractmethod
-from enum import Enum
 from typing import Callable, Self, Type
 
 import requests
-from requests import Response
 
 
 class State(ABC):
-    def __init__(self, change_state: Callable[[Type[Self], ...], None], *args, **kwargs) -> None:
+    def __init__(
+        self, change_state: Callable[[Type[Self], ...], None], *args, **kwargs
+    ) -> None:
         self.list_buffer = []
         self.list_index = 0
 
@@ -40,7 +40,9 @@ class Queue(State):
 
 
 class Song(State):
-    def __init__(self, change_state: Callable[[Type[Self], ...], None], song_list_buffer: list) -> None:
+    def __init__(
+        self, change_state: Callable[[Type[Self], ...], None], song_list_buffer: list
+    ) -> None:
         super().__init__(change_state)
 
         self.list_buffer = song_list_buffer
@@ -48,11 +50,7 @@ class Song(State):
     def action(self) -> None:
         requests.put(
             "http://localhost:6969/channels/main/queue",
-            json={
-                "song_resource_id": self.list_buffer[self.list_index][
-                    "resource_id"
-                ]
-            },
+            json={"song_resource_id": self.list_buffer[self.list_index]["resource_id"]},
         )
 
     def back(self) -> None:
@@ -124,7 +122,9 @@ class Tui:
     def print_line(self, line: int, text: str, *args) -> None:
         empty_space_length = self.columns - len(text)
 
-        self.window.addstr(line, self.text_right_padding, text + " " * empty_space_length, *args)
+        self.window.addstr(
+            line, self.text_right_padding, text + " " * empty_space_length, *args
+        )
 
     def update_list(self) -> None:
         offset = max(0, self.state.list_index - int(self.list_lines / 2))
@@ -138,19 +138,17 @@ class Tui:
 
         cursor = self.state.list_index - start
 
-        list_segment = self.state.list_buffer[
-            start:end + 1
-        ]
+        list_segment = self.state.list_buffer[start : end + 1]
         for line in range(self.list_lines + 1):
             if line > len(list_segment) - 1:
-                self.print_line(
-                    line + self.list_vertical_top_padding, " "
-                )
+                self.print_line(line + self.list_vertical_top_padding, " ")
                 continue
 
             if line == cursor:
                 self.print_line(
-                    line + self.list_vertical_top_padding, list_segment[line]["title"], curses.color_pair(1) | curses.A_BOLD
+                    line + self.list_vertical_top_padding,
+                    list_segment[line]["title"],
+                    curses.color_pair(1) | curses.A_BOLD,
                 )
                 continue
 
@@ -212,6 +210,7 @@ class Tui:
                 case "2":
                     self.change_state(Album)
                     self.update_list()
+
 
 def tui():
     Tui()

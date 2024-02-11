@@ -12,7 +12,7 @@ from platformdirs import (
     user_videos_dir,
 )
 from tinytag import TinyTag
-
+from tinytag.tinytag import TinyTagException
 
 class FilesystemProvider(Provider):
     @classmethod
@@ -130,9 +130,12 @@ class FilesystemProvider(Provider):
 
     def load_songs_metadata(self, songs_paths: list[Path]) -> None:
         for song_path in songs_paths:
-            metadata = TinyTag.get(song_path)
+            try:
+                metadata = TinyTag.get(song_path)
+            except TinyTagException:
+                continue
 
-            album_name = metadata.album if metadata.album is not None else "unknown"
+            album_name = metadata.album if metadata.album is not None else "Unknown"
 
             self.albums.setdefault(album_name, []).append(song_path)
 

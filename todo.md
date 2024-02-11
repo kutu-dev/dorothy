@@ -9,6 +9,7 @@ Remember that this is an indicative, and you shouldn't use it as the only refere
 - [ ] Make a fully working queue frontend with the TUI
   - [ ] Implement all the endpoints from the API
   - [ ] Improve keybindings
+- [ ] Scan and rescan function in any provider
 
 ---
 
