@@ -40,6 +40,7 @@ class PlaybinListener(Listener):
         super().__init__(config, node_instance_path)
 
         self.player = None
+        self.current_song_uri: str = ""
 
     def start_the_player(self):
         Gst.init(None)
@@ -56,7 +57,10 @@ class PlaybinListener(Listener):
 
     @ensure_player_is_available
     def play(self, song: Song) -> None:
-        self.player.set_property("uri", song.uri)
+        if song.uri != self.current_song_uri:
+            self.stop()
+            self.player.set_property("uri", song.uri)
+            self.current_song_uri = song.uri
 
         res = self.player.set_state(Gst.State.PLAYING)
         if res == Gst.StateChangeReturn.FAILURE:

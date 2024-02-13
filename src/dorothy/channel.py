@@ -14,20 +14,25 @@ class Channel:
         self._logger.info(f'Instantiated channel "{channel_name}"')
 
     def insert(self, song: Song, insert_position: int) -> None:
-        self._logger.info(f'Adding song "{song.title}" to queue in position "{insert_position}"')
+        self._logger.info(
+            f'Adding song "{song.title}" to queue in position "{insert_position}"'
+        )
 
-        self.queue.insert(insert_position if insert_position <= len(self.queue) else len(self.queue), song)
+        self.queue.insert(
+            insert_position if insert_position <= len(self.queue) else len(self.queue),
+            song,
+        )
 
     def play(self) -> None:
         for listener in self.listeners:
             if self.now_playing is not None:
-                next_song = self.now_playing
+                song_to_play = self.now_playing
             elif len(self.queue) > 0:
-                next_song = self.queue[0]
+                song_to_play = self.queue[0]
             else:
                 return
 
-            listener.play(next_song)
+            listener.play(song_to_play)
 
         self.is_paused = False
 
@@ -73,7 +78,7 @@ class Channel:
             return
 
         self.now_playing = self.queue[play_position]
-        self.remove_from_queue(play_position)
+        self.queue = self.queue[play_position + 1 :]
         self.play()
 
     def cleanup_listeners(self) -> None:

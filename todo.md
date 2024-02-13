@@ -2,18 +2,16 @@
 ## Next
 Remember that this is an indicative, and you shouldn't use it as the only reference when developing.
 
+- [ ] Clean up and refine the FilesystemProvider code to make it compatible with artists filtering and more metadata data
 - [ ] Refine the REST API
-- - [ ] Split play and resume and make `play_from_queue_given_index` work in the TUI.
   - [ ] Improve the summary of play_pause
   - [ ] Implement queue song moving
-- [ ] Make a fully working queue frontend with the TUI
-  - [ ] Implement all the endpoints from the API
-  - [ ] Improve keybindings
 - [ ] Scan and rescan function in any provider
 
 ---
 
 ## Quirks
+ - [ ] Terminal breaks on exit or crash of `lilim`
  - [ ] Disable is not working
  - [ ] LOGGER OUTPUT TO STDERR(?)
  - [ ] DISABLE COLOR IN PIPING

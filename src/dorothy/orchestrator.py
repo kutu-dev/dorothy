@@ -76,16 +76,25 @@ class Orchestrator:
         ].get_songs_from_album(album_resource_id.unique_id)
 
     # Listener methods
-    def add_to_queue(self, channel: str, song_resource_id: ResourceId) -> None:
-        self.insert_to_queue(channel, song_resource_id, 0)
+    def add_to_queue(self, channel: str, resource_id: ResourceId) -> None:
+        self.insert_to_queue(channel, resource_id, 0)
 
-    def insert_to_queue(self, channel: str, song_resource_id: ResourceId, insert_position: int) -> None:
-        song = self.get_song(song_resource_id)
+    def insert_to_queue(
+        self, channel: str, resource_id: ResourceId, insert_position: int
+    ) -> None:
+        songs: list[Song] = []
 
-        if song is None:
-            return
+        if resource_id.resource_type is Song:
+            song = self.get_song(resource_id)
 
-        self.channels[channel].insert(song, insert_position)
+            if song is not None:
+                songs.append(song)
+
+        elif resource_id.resource_type is Album:
+            songs = self.get_songs_from_album(resource_id)
+
+        for song in songs:
+            self.channels[channel].insert(song, insert_position)
 
     def remove_from_queue(self, channel: str, remove_position: int) -> None:
         self.channels[channel].remove_from_queue(remove_position)

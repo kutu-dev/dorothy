@@ -7,8 +7,8 @@ license = "MIT License"
 readme = "README.md"
 
 [tool.poetry.scripts]
-dorothy = 'dorothy.__main__:app'
-tui = 'dorothy.tui:tui'
+dorothy = 'dorothy.__main__:main'
+lilim = 'lilim.__main__:main'
 
 [tool.poetry.dependencies]
 python = "^3.11.0"

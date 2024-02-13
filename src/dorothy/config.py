@@ -21,7 +21,7 @@ class ConfigManager:
         self.base_config_path = self.get_base_config_path()
 
     def get_base_config_path(self) -> Path:
-        fake_path = Path("/users/kutu/documents/dev/projects/dorothy/CONFIG")
+        fake_path = Path("/home/kutu/documents/dev/projects/dorothy/CONFIG")
 
         fake_path.mkdir(parents=True, exist_ok=True)
         return fake_path

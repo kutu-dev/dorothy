@@ -16,8 +16,9 @@ from dorothy.nodes import Controller, NodeInstancePath, NodeManifest
 from dorothy.orchestrator import Orchestrator
 from marshmallow import Schema, fields
 
-class SongResourceId(Schema):
-    song_resource_id = fields.Str(required=True)
+
+class ResourceId(Schema):
+    resource_id = fields.Str(required=True)
 
 
 class Song(Schema):
@@ -30,9 +31,14 @@ class SongList(Schema):
     songs = fields.List(fields.Nested(Song), required=True)
 
 
+class ChannelList(Schema):
+    channels = fields.List(fields.Str(), required=True)
+
+
 class Album(Schema):
     resource_id = fields.Str(required=True)
     title = fields.Str()
+    number_of_songs = fields.Int(required=True)
 
 
 class AlbumList(Schema):
@@ -76,10 +82,20 @@ class RestController(Controller):
                 web.get(
                     "/channels/{channel_name}/queue", self.list_queue, allow_head=False
                 ),
-                web.put("/channels/{channel_name}/queue", self.add_to_queue),
-                web.put("/channels/{channel_name}/queue/{position}", self.insert_to_queue),
-                web.delete("/channels/{channel_name}/queue/{position}", self.remove_from_queue),
-                web.post("/channels/{channel_name}/queue/{position}/play", self.play_from_queue_given_index),
+                web.get("/channels", self.get_all_channels, allow_head=False),
+                web.put(
+                    "/channels/{channel_name}/queue", self.add_to_queue
+                ),
+                web.put(
+                    "/channels/{channel_name}/queue/{position}", self.insert_to_queue
+                ),
+                web.delete(
+                    "/channels/{channel_name}/queue/{position}", self.delete_from_queue
+                ),
+                web.post(
+                    "/channels/{channel_name}/queue/{position}/play",
+                    self.play_from_queue_given_index,
+                ),
                 web.post("/channels/{channel_name}/play", self.play),
                 web.post("/channels/{channel_name}/pause", self.pause),
                 web.post("/channels/{channel_name}/play_pause", self.play_pause),
@@ -134,6 +150,14 @@ class RestController(Controller):
 
     @docs(
         tags=["channels"],
+        summary="Get all channels available",
+    )
+    @response_schema(ChannelList, 200)
+    async def get_all_channels(self, request: Request) -> Response:
+        return web.json_response({"channels": list(self.orchestrator.channels.keys())})
+
+    @docs(
+        tags=["channels"],
         summary="List all songs in the queue",
     )
     async def list_queue(self, request: Request) -> Response:
@@ -142,28 +166,26 @@ class RestController(Controller):
             for song in self.orchestrator.get_queue(request.match_info["channel_name"])
         ]
 
-        return web.json_response(json_songs)
+        return web.json_response({"songs": json_songs})
 
     @docs(
         tags=["channels"],
-        summary="Add song to the queue at the end",
+        summary="Add song or album to the queue at the end",
     )
-    @json_schema(SongResourceId)
+    @json_schema(ResourceId)
     async def add_to_queue(self, request: Request) -> Response:
         data = await request.json()
 
-        song_resource_id = deserialize_resource_id(data["song_resource_id"])
-        self.orchestrator.add_to_queue(
-            request.match_info["channel_name"], song_resource_id
-        )
+        resource_id = deserialize_resource_id(data["resource_id"])
+        self.orchestrator.add_to_queue(request.match_info["channel_name"], resource_id)
 
         return web.Response()
 
     @docs(
         tags=["channels"],
-        summary='Add song to the queue at the position specified by "{position}" ',
+        summary='Add song or album to the queue at the position specified by "{position}" ',
     )
-    @json_schema(SongResourceId)
+    @json_schema(ResourceId)
     async def insert_to_queue(self, request: Request) -> Response:
         data = await request.json()
 
@@ -172,9 +194,9 @@ class RestController(Controller):
 
         position = int(request.match_info["position"])
 
-        song_resource_id = deserialize_resource_id(data["song_resource_id"])
+        resource_id = deserialize_resource_id(data["resource_id"])
         self.orchestrator.insert_to_queue(
-            request.match_info["channel_name"], song_resource_id, position
+            request.match_info["channel_name"], resource_id, position
         )
 
         return web.Response()
@@ -183,16 +205,12 @@ class RestController(Controller):
         tags=["channels"],
         summary='Remove songs from the queue at the position specified by "{position}" ',
     )
-    @json_schema(SongResourceId)
-    async def remove_from_queue(self, request: Request) -> Response:
-        data = await request.json()
-
+    async def delete_from_queue(self, request: Request) -> Response:
         if not request.match_info["position"].isdigit():
             return web.Response(status=422, text="The position must be an integer")
 
         position = int(request.match_info["position"])
 
-        song_resource_id = deserialize_resource_id(data["song_resource_id"])
         self.orchestrator.remove_from_queue(
             request.match_info["channel_name"], position
         )
