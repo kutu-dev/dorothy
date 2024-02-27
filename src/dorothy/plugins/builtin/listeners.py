@@ -64,19 +64,19 @@ class PlaybinListener(Listener):
 
         res = self.player.set_state(Gst.State.PLAYING)
         if res == Gst.StateChangeReturn.FAILURE:
-            self._logger.error("Unable to play the song")
+            self.logger().error("Unable to play the song")
 
     @ensure_player_is_available
     def pause(self) -> None:
         res = self.player.set_state(Gst.State.PAUSED)
         if res == Gst.StateChangeReturn.FAILURE:
-            self._logger.error("Unable to pause the song")
+            self.logger().error("Unable to pause the song")
 
     @ensure_player_is_available
     def stop(self) -> None:
         res = self.player.set_state(Gst.State.NULL)
         if res == Gst.StateChangeReturn.FAILURE:
-            self._logger.error("Unable to stop the playing song")
+            self.logger().error("Unable to stop the playing song")
 
     def cleanup(self) -> bool:
         self.stop()

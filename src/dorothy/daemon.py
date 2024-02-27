@@ -42,5 +42,6 @@ def start_mainloop(
         controller.start()
 
     logger.info("Starting the mainloop...")
+
     while True:
-        pass
+        orchestrator.check_if_song_finished()

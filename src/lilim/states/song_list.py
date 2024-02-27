@@ -1,4 +1,5 @@
 from typing import Any
+from typing_extensions import override
 
 import requests
 from ..exceptions import UnsuccessfulRequest
@@ -8,19 +9,28 @@ import lilim.states.album_list
 
 
 class SongList(State):
-    def __init__(self, *args, topbar_title: str, song_list: list[dict[str, Any]]) -> None:
+    def __init__(
+        self, *args, topbar_title: str, song_list: list[dict[str, Any]]
+    ) -> None:
         super().__init__(*args)
 
         for song in song_list:
             self.list_buffer.append(ListElement(song["title"], song))
 
-        self.print_topbar(topbar_title)
+        self.update_topbar(topbar_title)
 
+    @override
     def action(self) -> None:
         try:
-            self.channel_request("PUT", "queue", json={
-                "resource_id": self.list_buffer[self.list_index].internal["resource_id"]
-            })
+            self.channel_request(
+                "PUT",
+                "queue",
+                json={
+                    "resource_id": self.current().internal[
+                        "resource_id"
+                    ]
+                },
+            )
         except UnsuccessfulRequest:
             return
 
@@ -28,11 +38,6 @@ class SongList(State):
             f"Added song {self.list_buffer[self.list_index].text} to the queue"
         )
 
-    def enter(self) -> None:
-        pass
-
-    def delete(self) -> None:
-        pass
-
+    @override
     def back(self) -> None:
         self.change_state(lilim.states.album_list.AlbumList)

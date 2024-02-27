@@ -1,4 +1,7 @@
+import asyncio
+import logging
 from multiprocessing import Process, set_start_method
+from threading import Thread
 from typing import Any
 
 from aiohttp import web
@@ -11,6 +14,8 @@ from aiohttp_apispec import (
     setup_aiohttp_apispec,
     validation_middleware,
 )
+
+from dorothy.logging import get_logger
 from dorothy.models import deserialize_resource_id
 from dorothy.nodes import Controller, NodeInstancePath, NodeManifest
 from dorothy.orchestrator import Orchestrator
@@ -58,22 +63,21 @@ class RestController(Controller):
     ) -> None:
         super().__init__(config, node_instance_path, orchestrator)
 
-        self._rest_api_process = Process(target=self.start_rest_api_server, daemon=True)
+        self.port = int(self.config["port"])
+        runner = self.get_app_runner()
+
+        self._rest_api_thread = Thread(target=self.run_server, args=(runner,))
 
     def start(self) -> None:
-        self._rest_api_process.start()
+        self.logger().info(f"Starting REST API server at localhost:{self.port}")
+        self._rest_api_thread.start()
 
     def cleanup(self) -> bool:
-        self._rest_api_process.join()
-        self._rest_api_process.close()
+        self._rest_api_thread.join()
 
         return True
 
-    def start_rest_api_server(self) -> None:
-        port = int(self.config["port"])
-
-        self._logger.info(f"Starting REST API server at localhost:{port}")
-
+    def get_app_runner(self):
         app = web.Application()
         app.add_routes(
             [
@@ -83,9 +87,8 @@ class RestController(Controller):
                     "/channels/{channel_name}/queue", self.list_queue, allow_head=False
                 ),
                 web.get("/channels", self.get_all_channels, allow_head=False),
-                web.put(
-                    "/channels/{channel_name}/queue", self.add_to_queue
-                ),
+                web.get("/channels/{channel_name}", self.get_channel_state, allow_head=False),
+                web.put("/channels/{channel_name}/queue", self.add_to_queue),
                 web.put(
                     "/channels/{channel_name}/queue/{position}", self.insert_to_queue
                 ),
@@ -124,7 +127,22 @@ class RestController(Controller):
 
         app.middlewares.append(validation_middleware)
 
-        web.run_app(app, port=port, print=None)
+        #web.run_app(app, port=port, print=None)
+        return web.AppRunner(app)
+
+    def run_server(self, runner):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(runner.setup())
+        site = web.TCPSite(runner, 'localhost', self.port)
+        loop.run_until_complete(site.start())
+        loop.run_forever()
+
+    def get_channel_state_dict(self, channel_name: str) -> dict[str, Any]:
+        current_song = self.orchestrator.get_current_song(channel_name)
+        parsed_current_song = vars(current_song) if current_song is not None else None
+
+        return {"current_song": parsed_current_song, "player_state": self.orchestrator.get_channel_state(channel_name).value}
 
     @docs(
         tags=["songs"],
@@ -167,6 +185,13 @@ class RestController(Controller):
         ]
 
         return web.json_response({"songs": json_songs})
+
+    @docs(
+        tags=["channels"],
+        summary="Get all the relevant information about the current state of a channel",
+    )
+    async def get_channel_state(self, request: Request) -> Response:
+        return web.json_response(self.get_channel_state_dict(request.match_info["channel_name"]))
 
     @docs(
         tags=["channels"],
@@ -238,7 +263,7 @@ class RestController(Controller):
         summary="Start the playback",
     )
     async def play(self, request: Request) -> Response:
-        self._logger.info("Starting the playback")
+        self.logger().info("Starting the playback")
         self.orchestrator.play(request.match_info["channel_name"])
 
         return web.Response()
@@ -248,7 +273,7 @@ class RestController(Controller):
         summary="Pause the playback",
     )
     async def pause(self, request: Request) -> Response:
-        self._logger.info("Pausing the playback")
+        self.logger().info("Pausing the playback")
         self.orchestrator.pause(request.match_info["channel_name"])
 
         return web.Response()
@@ -258,10 +283,10 @@ class RestController(Controller):
         summary="Start or pause the playback",
     )
     async def play_pause(self, request: Request) -> Response:
-        self._logger.info("Start/pause the playback")
-        self.orchestrator.play_pause(request.match_info["channel_name"])
+        self.logger().info("Start/pause the playback")
+        queue_changed = self.orchestrator.play_pause(request.match_info["channel_name"])
 
-        return web.Response()
+        return web.json_response({**self.get_channel_state_dict(request.match_info["channel_name"]), "queue_changed": queue_changed})
 
     @docs(
         tags=["channels"],

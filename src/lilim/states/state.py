@@ -1,4 +1,4 @@
-from abc import abstractmethod, ABC
+from abc import ABC
 from dataclasses import dataclass, field
 from typing import Any, Protocol, Type, Callable
 
@@ -6,6 +6,7 @@ import requests
 from requests import Response
 
 from ..exceptions import UnsuccessfulRequest
+from ..player_states import PlayerStates
 
 
 @dataclass
@@ -26,7 +27,8 @@ class State(ABC):
         change_state: ChangeState,
         update_list: Callable[[], None],
         notification: Callable[[str], None],
-        print_topbar: Callable[[str], None],
+        update_topbar: Callable[[str], None],
+        change_bottombar_state: Callable[[str | None, PlayerStates | None], None],
         **kwargs,
     ) -> None:
         self.list_buffer: list[ListElement] = []
@@ -37,14 +39,19 @@ class State(ABC):
         self.change_state = change_state
         self.update_list = update_list
         self.notification = notification
-        self.print_topbar = print_topbar
+        self.update_topbar = update_topbar
+        self.change_bottombar_state = change_bottombar_state
 
     def current(self) -> ListElement:
         return self.list_buffer[self.list_index]
 
-    def request(self, verb: str, path: str, json: dict[str, Any] | None = None) -> Response:
+    def request(
+        self, verb: str, path: str, json: dict[str, Any] | None = None
+    ) -> Response:
         try:
-            response = requests.request(verb, f"http://localhost:6969/{path}", json=json)
+            response = requests.request(
+                verb, f"http://localhost:6969/{path}", json=json
+            )
         except requests.exceptions.ConnectionError:
             self.notification("ERROR: Connection to Dorothy refused")
             raise UnsuccessfulRequest
@@ -56,20 +63,28 @@ class State(ABC):
         return response
 
     def channel_request(self, verb: str, path: str, json: dict[str, Any] | None = None):
-        return self.request(verb, f"channels/{self.channel}/{path}", json)
+        # Avoid trailing slash bars on the URL
+        if path == "":
+            route = f"channels/{self.channel}"
+        else:
+            route = f"channels/{self.channel}/{path}"
 
-    @abstractmethod
+        return self.request(verb, route, json)
+
     def action(self) -> None:
-        ...
+        pass
 
-    @abstractmethod
     def enter(self) -> None:
-        ...
+        pass
 
-    @abstractmethod
+    def skip(self) -> None:
+        pass
+
     def delete(self) -> None:
-        ...
+        pass
 
-    @abstractmethod
+    def play_pause(self, queue_changed: bool) -> None:
+        pass
+
     def back(self) -> None:
-        ...
+        pass

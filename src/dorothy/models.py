@@ -34,11 +34,12 @@ class ResourceId:
 
 class Song(Resource):
     def __init__(
-        self, resource_id: ResourceId, uri: str | None = None, title: str | None = None
+        self, resource_id: ResourceId, duration: int, uri: str | None = None, title: str | None = None
     ) -> None:
         self.resource_id = resource_id
         self.uri = uri
         self.title = title
+        self.duration = duration
 
     @property
     def __dict__(self) -> dict[str, Any]:
@@ -58,7 +59,12 @@ class Song(Resource):
 
 
 class Album(Resource):
-    def __init__(self, resource_id: ResourceId, title: str | None = None, number_of_songs: int = 0) -> None:
+    def __init__(
+        self,
+        resource_id: ResourceId,
+        title: str | None = None,
+        number_of_songs: int = 0,
+    ) -> None:
         self.resource_id = resource_id
         self.title = title
         self.number_of_songs = number_of_songs
@@ -68,7 +74,7 @@ class Album(Resource):
         return {
             "resource_id": str(self.resource_id),
             "title": self.title,
-            "number_of_songs": self.number_of_songs
+            "number_of_songs": self.number_of_songs,
         }
 
     @__dict__.setter

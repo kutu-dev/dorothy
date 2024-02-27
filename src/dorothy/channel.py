@@ -1,6 +1,15 @@
+import time
+from enum import Enum
+
 from .logging import get_logger
 from .models import Song
 from .nodes import Listener
+
+
+class ChannelStates(Enum):
+    PLAYING = "PLAYING"
+    PAUSED = "PAUSED"
+    STOPPED = "STOPPED"
 
 
 class Channel:
@@ -8,8 +17,10 @@ class Channel:
         self.listeners: list[Listener] = []
         self._logger = get_logger(channel_name)
         self.queue: list[Song] = []
-        self.now_playing: Song | None = None
-        self.is_paused = True
+        self.channel_state = ChannelStates.STOPPED
+        self.current_song: Song | None = None
+
+        self.song_start_timestamp: int = 0
 
         self._logger.info(f'Instantiated channel "{channel_name}"')
 
@@ -23,44 +34,57 @@ class Channel:
             song,
         )
 
+    def check_if_song_finished(self) -> None:
+        if self.channel_state != ChannelStates.PLAYING:
+            return
+
+        if time.time() - self.song_start_timestamp > self.current_song.duration:
+            print("SONG FINISHED")
+
     def play(self) -> None:
+        if self.channel_state == ChannelStates.PLAYING:
+            return
+
         for listener in self.listeners:
-            if self.now_playing is not None:
-                song_to_play = self.now_playing
-            elif len(self.queue) > 0:
-                song_to_play = self.queue[0]
-            else:
-                return
+            if self.channel_state == ChannelStates.PAUSED:
+                listener.play(self.current_song)
+                continue
 
-            listener.play(song_to_play)
+            if len(self.queue) > 0:
+                self.current_song = self.queue[0]
+                listener.play(self.current_song)
+                self.queue.pop(0)
 
-        self.is_paused = False
-
-        if self.now_playing is None:
-            self.now_playing = self.queue[0]
-            self.queue.pop(0)
+        self.channel_state = ChannelStates.PLAYING
+        self.song_start_timestamp = time.time()
 
     def pause(self) -> None:
         for listener in self.listeners:
             listener.pause()
 
-        self.is_paused = True
+        self.channel_state = ChannelStates.PAUSED
 
-    def play_pause(self) -> None:
-        if self.is_paused:
+    def play_pause(self) -> bool:
+        queue_changed = False
+        if self.channel_state == ChannelStates.STOPPED:
+            queue_changed = True
+
+        if self.channel_state != ChannelStates.PLAYING:
             self.play()
         else:
             self.pause()
+
+        return queue_changed
 
     def stop(self) -> None:
         for listener in self.listeners:
             listener.stop()
 
-        self.now_playing = None
-        self.is_paused = False
+        self.current_song = None
+        self.channel_state = ChannelStates.STOPPED
 
     def skip(self) -> None:
-        self.now_playing = None
+        self.stop()
         self.play()
 
     def remove_from_queue(self, remove_position: int) -> None:
@@ -73,13 +97,8 @@ class Channel:
         if play_position > len(self.queue):
             return
 
-        if play_position == 0:
-            self.skip()
-            return
-
-        self.now_playing = self.queue[play_position]
-        self.queue = self.queue[play_position + 1 :]
-        self.play()
+        self.queue = self.queue[play_position:]
+        self.skip()
 
     def cleanup_listeners(self) -> None:
         for listener in self.listeners:

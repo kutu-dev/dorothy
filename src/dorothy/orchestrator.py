@@ -1,6 +1,6 @@
 from typing import Iterator
 
-from .channel import Channel
+from .channel import Channel, ChannelStates
 from .logging import get_logger
 from .models import Album, ResourceId, Song
 from .nodes import Provider
@@ -15,6 +15,10 @@ class Orchestrator:
 
         self.providers: dict[str, dict[str, dict[str, Provider]]] = {}
         self.channels: dict[str, Channel] = {}
+
+    def check_if_song_finished(self) -> None:
+        for channel in self.channels.values():
+            channel.check_if_song_finished()
 
     def providers_generator(self) -> Iterator[Provider]:
         for _, provider in self.providers.items():
@@ -105,8 +109,8 @@ class Orchestrator:
     def pause(self, channel: str) -> None:
         self.channels[channel].pause()
 
-    def play_pause(self, channel: str) -> None:
-        self.channels[channel].play_pause()
+    def play_pause(self, channel: str) -> bool:
+        return self.channels[channel].play_pause()
 
     def stop(self, channel: str) -> None:
         self.channels[channel].stop()
@@ -119,6 +123,12 @@ class Orchestrator:
 
     def play_from_queue_given_index(self, channel: str, play_position: int) -> None:
         self.channels[channel].play_from_queue_given_index(play_position)
+
+    def get_current_song(self, channel: str) -> Song | None:
+        return self.channels[channel].current_song
+
+    def get_channel_state(self, channel: str) -> ChannelStates:
+        return self.channels[channel].channel_state
 
     def cleanup_nodes(self) -> None:
         self._logger.info("Cleaning nodes...")

@@ -24,13 +24,15 @@ class ColorizedFormatter(logging.Formatter):
         )
 
         formatter = logging.Formatter(
-            f'{colorized_log_level} %(asctime)s {dim("(%(name)s))")} %(message)s'
+            f'{colorized_log_level} %(asctime)s {dim("(%(name)s)")} %(message)s'
         )
 
         return formatter.format(record)
 
 
 def get_logger(logger_name: str) -> logging.Logger:
+    print(logger_name)
+
     logger = logging.getLogger(logger_name)
     logger.setLevel(logging.DEBUG)
 

@@ -28,11 +28,11 @@ class FilesystemProvider(Provider):
     ) -> None:
         super().__init__(config, node_instance_path)
 
-        self._logger.info("Parsing source paths in the config...")
+        self.logger().info("Parsing source paths in the config...")
         self.paths = self.parse_paths(self.config["paths"])
         self.remove_redundant_source_paths()
 
-        self._logger.info("Parsing ignore paths in the config...")
+        self.logger().info("Parsing ignore paths in the config...")
         self.exclude_paths = self.parse_paths(self.config["exclude_paths"])
 
         self.songs_paths = self.get_songs_paths()
@@ -79,13 +79,13 @@ class FilesystemProvider(Provider):
                     final_path += char
                     escape_next = False
 
-            self._logger.info(f'Parsed path "{path}" to "{final_path}"')
+            self.logger().info(f'Parsed path "{path}" to "{final_path}"')
             parsed_paths.append(Path(final_path))
 
         return parsed_paths
 
     def remove_redundant_source_paths(self) -> None:
-        self._logger.info("Removing redundant source paths...")
+        self.logger().info("Removing redundant source paths...")
         redundant_paths_indexes: set[int] = set()
 
         for check_index, path_to_check in enumerate(self.paths):
@@ -153,9 +153,8 @@ class FilesystemProvider(Provider):
             except TinyTagException:
                 song_name = song_path.name
 
-
             songs.append(
-                Song(song_resource_id, song_path.absolute().as_uri(), song_name)
+                Song(song_resource_id, 10, song_path.absolute().as_uri(), song_name)
             )
 
         return songs
@@ -175,6 +174,7 @@ class FilesystemProvider(Provider):
 
         return Song(
             song_resource_id,
+            10,
             song_path.as_uri(),
             song_path.name,
         )
@@ -191,7 +191,9 @@ class FilesystemProvider(Provider):
 
     def get_album(self, album_unique_id: str) -> Album:
         return Album(
-            ResourceId(Album, self.node_instance_path, album_unique_id), album_unique_id, len(self.albums[album_unique_id])
+            ResourceId(Album, self.node_instance_path, album_unique_id),
+            album_unique_id,
+            len(self.albums[album_unique_id]),
         )
 
     def get_songs_from_album(self, album_unique_id: str) -> list[Song]:
@@ -205,12 +207,16 @@ class FilesystemProvider(Provider):
             )
 
             try:
-                song_name = TinyTag.get(song_path).title if TinyTag.get(song_path).title is not None else song_path.name
+                song_name = (
+                    TinyTag.get(song_path).title
+                    if TinyTag.get(song_path).title is not None
+                    else song_path.name
+                )
             except TinyTagException:
                 song_name = song_path.name
 
             songs.append(
-                Song(song_resource_id, song_path.absolute().as_uri(), song_name)
+                Song(song_resource_id, 10, song_path.absolute().as_uri(), song_name)
             )
 
         return songs

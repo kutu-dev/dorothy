@@ -1,11 +1,12 @@
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Type, TypeVar
 
-from .models import Album, Song
 
 if TYPE_CHECKING:
     from .orchestrator import Orchestrator
+    from .models import Album, Song
 
 from .logging import get_logger
 
@@ -67,7 +68,7 @@ class Node(ABC):
     ) -> None:
         self.config = config
         self.node_instance_path = node_instance_path
-        self._logger = get_logger(str(self.node_instance_path))
+        self._logger: logging.Logger | None = None
 
     @classmethod
     @abstractmethod
@@ -77,6 +78,12 @@ class Node(ABC):
     @staticmethod
     def extra_node_default_configs() -> dict[str, Any]:
         return {}
+
+    def logger(self) -> logging.Logger:
+        if self._logger is None:
+            self._logger = get_logger(str(self.node_instance_path))
+
+        return self._logger
 
     def cleanup(self) -> bool:
         return True
@@ -108,23 +115,23 @@ class Provider(Node, ABC):
         super().__init__(config, node_instance_path)
 
     @abstractmethod
-    def get_all_songs(self) -> list[Song]:
+    def get_all_songs(self) -> list["Song"]:
         ...
 
     @abstractmethod
-    def get_song(self, unique_song_id: str) -> Song | None:
+    def get_song(self, unique_song_id: str) -> "Song | None":
         ...
 
     @abstractmethod
-    def get_all_albums(self) -> list[Album]:
+    def get_all_albums(self) -> list["Album"]:
         ...
 
     @abstractmethod
-    def get_album(self, unique_album_id: str) -> Song | None:
+    def get_album(self, unique_album_id: str) -> "Song | None":
         ...
 
     @abstractmethod
-    def get_songs_from_album(self, unique_album_id: str) -> list[Song]:
+    def get_songs_from_album(self, unique_album_id: str) -> list["Song"]:
         ...
 
 
@@ -139,7 +146,7 @@ class Listener(Node, ABC):
         return {"channels": ["main"]}
 
     @abstractmethod
-    def play(self, song: Song) -> None:
+    def play(self, song: "Song") -> None:
         ...
 
     @abstractmethod

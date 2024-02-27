@@ -1,4 +1,8 @@
 # Todo
+
+## Features
+- Search with `/` in lilim.
+
 ## Next
 Remember that this is an indicative, and you shouldn't use it as the only reference when developing.
 
