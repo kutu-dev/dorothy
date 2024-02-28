@@ -31,8 +31,6 @@ class ColorizedFormatter(logging.Formatter):
 
 
 def get_logger(logger_name: str) -> logging.Logger:
-    print(logger_name)
-
     logger = logging.getLogger(logger_name)
     logger.setLevel(logging.DEBUG)
 

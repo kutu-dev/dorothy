@@ -25,11 +25,7 @@ class SongList(State):
             self.channel_request(
                 "PUT",
                 "queue",
-                json={
-                    "resource_id": self.current().internal[
-                        "resource_id"
-                    ]
-                },
+                json={"resource_id": self.current().internal["resource_id"]},
             )
         except UnsuccessfulRequest:
             return

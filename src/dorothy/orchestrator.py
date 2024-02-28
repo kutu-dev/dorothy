@@ -1,9 +1,9 @@
 from typing import Iterator
 
-from .channel import Channel, ChannelStates
 from .logging import get_logger
-from .models import Album, ResourceId, Song
 from .nodes import Provider
+from .channel import Channel, ChannelStates
+from .models import Album, ResourceId, Song
 
 
 class Orchestrator:

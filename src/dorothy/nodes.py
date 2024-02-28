@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING, Any, Type, TypeVar
 
 if TYPE_CHECKING:
     from .orchestrator import Orchestrator
-    from .models import Album, Song
+
+from .models import NodeInstancePath, Resource, ResourceId, Song, Album
 
 from .logging import get_logger
 
@@ -17,23 +18,6 @@ class NodeManifest:
     default_config: dict[str, Any] = field(default_factory=lambda: {})
 
 
-@dataclass
-class NodeInstancePath:
-    plugin_name: str = field(default_factory=lambda: "")
-    node_type: str = field(default_factory=lambda: "")
-    node_name: str = field(default_factory=lambda: "")
-    instance_name: str = field(default_factory=lambda: "")
-
-    def sanitize(self, string: str) -> str:
-        return string.replace("&", "&&").replace(">", "&>")
-
-    def __str__(self) -> str:
-        return (
-            f"{self.sanitize(self.plugin_name)}"
-            + f">{self.sanitize(self.node_type)}"
-            + f">{self.sanitize(self.node_name)}"
-            + f">{self.sanitize(self.instance_name)}"
-        )
 
 
 def deserialize_node_instance_path(
@@ -85,6 +69,9 @@ class Node(ABC):
 
         return self._logger
 
+    def create_resource_id(self, resource_type: Type[Resource], unique_id: str) -> ResourceId:
+        return ResourceId(resource_type, self.node_instance_path, unique_id)
+
     def cleanup(self) -> bool:
         return True
 
@@ -104,7 +91,7 @@ class Controller(Node, ABC):
         self.orchestrator = orchestrator
 
     @abstractmethod
-    def start(self) -> None:
+    async def start(self) -> None:
         ...
 
 
@@ -115,7 +102,7 @@ class Provider(Node, ABC):
         super().__init__(config, node_instance_path)
 
     @abstractmethod
-    def get_all_songs(self) -> list["Song"]:
+    def get_all_songs(self) -> list[Song]:
         ...
 
     @abstractmethod
@@ -123,15 +110,11 @@ class Provider(Node, ABC):
         ...
 
     @abstractmethod
-    def get_all_albums(self) -> list["Album"]:
+    def get_all_albums(self) -> list[Album]:
         ...
 
     @abstractmethod
     def get_album(self, unique_album_id: str) -> "Song | None":
-        ...
-
-    @abstractmethod
-    def get_songs_from_album(self, unique_album_id: str) -> list["Song"]:
         ...
 
 
@@ -146,7 +129,7 @@ class Listener(Node, ABC):
         return {"channels": ["main"]}
 
     @abstractmethod
-    def play(self, song: "Song") -> None:
+    def play(self, song: Song) -> None:
         ...
 
     @abstractmethod

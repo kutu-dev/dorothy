@@ -1,6 +1,5 @@
+import asyncio
 import sys
-from logging import Logger
-
 from setproctitle import setproctitle
 
 from .config import ConfigManager
@@ -8,6 +7,15 @@ from .logging import get_logger
 from .nodes import Controller
 from .orchestrator import Orchestrator
 from .plugin_handler import PluginHandler
+
+
+async def mainloop(orchestrator: Orchestrator, controllers: list[Controller]):
+    controller_start_functions = [controller.start() for controller in controllers]
+    await asyncio.gather(*controller_start_functions)
+
+    while True:
+        orchestrator.check_if_song_finished()
+        await asyncio.sleep(0.5)
 
 
 def start_daemon() -> None:
@@ -19,7 +27,8 @@ def start_daemon() -> None:
     nodes = plugin_handler.load_nodes()
 
     try:
-        start_mainloop(nodes.orchestrator, nodes.controllers, logger)
+        logger.info("Starting the mainloop...")
+        asyncio.run(mainloop(nodes.orchestrator, nodes.controllers))
     except KeyboardInterrupt:
         pass
     finally:
@@ -32,16 +41,3 @@ def start_daemon() -> None:
                 )
 
     sys.exit()
-
-
-def start_mainloop(
-    orchestrator: Orchestrator, controllers: list[Controller], logger: Logger
-) -> None:
-    for controller in controllers:
-        logger.info(f'Starting controller "{controller.node_instance_path}"...')
-        controller.start()
-
-    logger.info("Starting the mainloop...")
-
-    while True:
-        orchestrator.check_if_song_finished()

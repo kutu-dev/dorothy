@@ -2,8 +2,8 @@ import time
 from enum import Enum
 
 from .logging import get_logger
-from .models import Song
 from .nodes import Listener
+from .models import Song
 
 
 class ChannelStates(Enum):
@@ -35,11 +35,12 @@ class Channel:
         )
 
     def check_if_song_finished(self) -> None:
+        print(self.channel_state)
         if self.channel_state != ChannelStates.PLAYING:
             return
 
         if time.time() - self.song_start_timestamp > self.current_song.duration:
-            print("SONG FINISHED")
+            self.skip()
 
     def play(self) -> None:
         if self.channel_state == ChannelStates.PLAYING:

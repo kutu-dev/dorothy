@@ -1,3 +1,4 @@
+from multiprocessing import Process, Queue
 from pathlib import Path
 from typing import Any, Callable
 
@@ -13,6 +14,7 @@ from platformdirs import (
 )
 from tinytag import TinyTag
 from tinytag.tinytag import TinyTagException
+import time
 
 
 class FilesystemProvider(Provider):
@@ -38,7 +40,8 @@ class FilesystemProvider(Provider):
         self.songs_paths = self.get_songs_paths()
 
         self.albums: dict[str, list[Path]] = {}
-        self.load_songs_metadata(self.songs_paths)
+        self.artists: dict[str, list[str]] = {}
+        self.load_album_artist_lists(self.songs_paths)
 
     def parse_paths(self, raw_paths: list[str]) -> list[Path]:
         special_words: dict[str, Callable[[], str]] = {
@@ -129,94 +132,58 @@ class FilesystemProvider(Provider):
 
         return songs_paths
 
-    def load_songs_metadata(self, songs_paths: list[Path]) -> None:
+    def get_song(self, song_unique_id: str | Path) -> Song | None:
+        song_path = Path(song_unique_id)
+
+        try:
+            song_metadata = TinyTag.get(song_path)
+
+            if song_metadata.duration is None:
+                return None
+            return Song(
+                self.create_resource_id(Song, str(song_path.absolute())),
+                song_path.as_uri(),
+                song_metadata.duration,
+                song_metadata.title,
+                song_metadata.album,
+                song_metadata.artist
+            )
+
+        except TinyTagException:
+            return None
+
+    def load_album_artist_lists(self, songs_paths: list[Path]) -> None:
         for song_path in songs_paths:
-            try:
-                metadata = TinyTag.get(song_path)
-            except TinyTagException:
+            song = self.get_song(song_path)
+
+            if song is None:
                 continue
 
-            album_name = metadata.album if metadata.album is not None else "Unknown"
+            album_name = song.album_name if song.album_name is not None else "Unknown album"
+            artist_name = song.artist_name if song.artist_name is not None else "Unknown artist"
 
             self.albums.setdefault(album_name, []).append(song_path)
+            self.artists.setdefault(artist_name, []).append(album_name)
 
     def get_all_songs(self) -> list[Song]:
         songs: list[Song] = []
 
         for song_path in self.songs_paths:
-            song_resource_id = ResourceId(
-                Song, self.node_instance_path, str(song_path.absolute())
-            )
-
-            try:
-                song_name = TinyTag.get(song_path).title
-            except TinyTagException:
-                song_name = song_path.name
-
-            songs.append(
-                Song(song_resource_id, 10, song_path.absolute().as_uri(), song_name)
-            )
+            songs.append(self.get_song(song_path))
 
         return songs
 
-    def get_song(self, song_unique_id: str) -> Song | None:
-        song_path = Path(song_unique_id)
-
-        if not song_path.is_file():
-            return None
-
-        try:
-            song_name = TinyTag.get(song_path).title
-        except TinyTagException:
-            song_name = song_path.name
-
-        song_resource_id = ResourceId(Song, self.node_instance_path, song_name)
-
-        return Song(
-            song_resource_id,
-            10,
-            song_path.as_uri(),
-            song_path.name,
+    def get_album(self, album_unique_id: str) -> Album:
+        return Album(
+            self.create_resource_id(Album, album_unique_id),
+            album_unique_id,
+            [self.get_song(song_path) for song_path in self.albums[album_unique_id]]
         )
 
     def get_all_albums(self) -> list[Album]:
         albums: list[Album] = []
 
-        for album_name, song_paths in self.albums.items():
-            album_resource_id = ResourceId(Album, self.node_instance_path, album_name)
-
-            albums.append(Album(album_resource_id, album_name, len(song_paths)))
+        for album_name in self.albums.keys():
+            albums.append(self.get_album(album_name))
 
         return albums
-
-    def get_album(self, album_unique_id: str) -> Album:
-        return Album(
-            ResourceId(Album, self.node_instance_path, album_unique_id),
-            album_unique_id,
-            len(self.albums[album_unique_id]),
-        )
-
-    def get_songs_from_album(self, album_unique_id: str) -> list[Song]:
-        songs: list[Song] = []
-
-        songs_paths = self.albums[album_unique_id]
-
-        for song_path in songs_paths:
-            song_resource_id = ResourceId(
-                Song, self.node_instance_path, str(song_path.absolute())
-            )
-
-            try:
-                song_name = (
-                    TinyTag.get(song_path).title
-                    if TinyTag.get(song_path).title is not None
-                    else song_path.name
-                )
-            except TinyTagException:
-                song_name = song_path.name
-
-            songs.append(
-                Song(song_resource_id, 10, song_path.absolute().as_uri(), song_name)
-            )
-
-        return songs

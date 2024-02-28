@@ -14,7 +14,7 @@ class SelectChannel(State):
         back_state: Type[State],
         change_channel: Callable[[str], None],
         change_blocked_state_keys: Callable[[bool], None],
-        change_bottombar_state_given_channel_state: Callable[[str], None]
+        change_bottombar_state_given_channel_state: Callable[[str], None],
     ) -> None:
         super().__init__(*args)
 
@@ -23,7 +23,9 @@ class SelectChannel(State):
         self.back_state = back_state
         self.change_channel = change_channel
         self.change_blocked_state_keys = change_blocked_state_keys
-        self.change_bottombar_state_given_channel_state = change_bottombar_state_given_channel_state
+        self.change_bottombar_state_given_channel_state = (
+            change_bottombar_state_given_channel_state
+        )
 
         try:
             channels = self.request("GET", "channels").json()["channels"]

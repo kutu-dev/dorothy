@@ -1,9 +1,11 @@
 import asyncio
 import logging
-from multiprocessing import Process, set_start_method
+import time
+from multiprocessing import Process, set_start_method, Queue
 from threading import Thread
 from typing import Any
 
+import aiohttp.web
 from aiohttp import web
 from aiohttp.web_request import Request
 from aiohttp.web_response import Response
@@ -64,20 +66,19 @@ class RestController(Controller):
         super().__init__(config, node_instance_path, orchestrator)
 
         self.port = int(self.config["port"])
-        runner = self.get_app_runner()
 
-        self._rest_api_thread = Thread(target=self.run_server, args=(runner,))
-
-    def start(self) -> None:
+    async def start(self) -> None:
         self.logger().info(f"Starting REST API server at localhost:{self.port}")
-        self._rest_api_thread.start()
+        app = self.get_web_app()
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, "localhost", self.port)
+        await site.start()
 
     def cleanup(self) -> bool:
-        self._rest_api_thread.join()
-
         return True
 
-    def get_app_runner(self):
+    def get_web_app(self) -> aiohttp.web.Application:
         app = web.Application()
         app.add_routes(
             [
@@ -87,7 +88,9 @@ class RestController(Controller):
                     "/channels/{channel_name}/queue", self.list_queue, allow_head=False
                 ),
                 web.get("/channels", self.get_all_channels, allow_head=False),
-                web.get("/channels/{channel_name}", self.get_channel_state, allow_head=False),
+                web.get(
+                    "/channels/{channel_name}", self.get_channel_state, allow_head=False
+                ),
                 web.put("/channels/{channel_name}/queue", self.add_to_queue),
                 web.put(
                     "/channels/{channel_name}/queue/{position}", self.insert_to_queue
@@ -127,22 +130,17 @@ class RestController(Controller):
 
         app.middlewares.append(validation_middleware)
 
-        #web.run_app(app, port=port, print=None)
-        return web.AppRunner(app)
-
-    def run_server(self, runner):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(runner.setup())
-        site = web.TCPSite(runner, 'localhost', self.port)
-        loop.run_until_complete(site.start())
-        loop.run_forever()
+        # web.run_app(app, port=self.port, print=None)
+        return app
 
     def get_channel_state_dict(self, channel_name: str) -> dict[str, Any]:
         current_song = self.orchestrator.get_current_song(channel_name)
-        parsed_current_song = vars(current_song) if current_song is not None else None
+        parsed_current_song = current_song.dict() if current_song is not None else None
 
-        return {"current_song": parsed_current_song, "player_state": self.orchestrator.get_channel_state(channel_name).value}
+        return {
+            "current_song": parsed_current_song,
+            "player_state": self.orchestrator.get_channel_state(channel_name).value,
+        }
 
     @docs(
         tags=["songs"],
@@ -152,7 +150,7 @@ class RestController(Controller):
     async def get_all_songs(self, request: Request) -> Response:
         json_songs = []
         for song in self.orchestrator.get_all_songs():
-            json_songs.append(vars(song))
+            json_songs.append(song.dict())
 
         return web.json_response({"songs": json_songs})
 
@@ -164,7 +162,7 @@ class RestController(Controller):
     async def get_song(self, request: Request) -> Response:
         resource_id = deserialize_resource_id(request.match_info["song_resource_id"])
 
-        return web.json_response(vars(self.orchestrator.get_song(resource_id)))
+        return web.json_response(self.orchestrator.get_song(resource_id).dict())
 
     @docs(
         tags=["channels"],
@@ -180,7 +178,7 @@ class RestController(Controller):
     )
     async def list_queue(self, request: Request) -> Response:
         json_songs = [
-            vars(song)
+            song.dict()
             for song in self.orchestrator.get_queue(request.match_info["channel_name"])
         ]
 
@@ -191,7 +189,9 @@ class RestController(Controller):
         summary="Get all the relevant information about the current state of a channel",
     )
     async def get_channel_state(self, request: Request) -> Response:
-        return web.json_response(self.get_channel_state_dict(request.match_info["channel_name"]))
+        return web.json_response(
+            self.get_channel_state_dict(request.match_info["channel_name"])
+        )
 
     @docs(
         tags=["channels"],
@@ -202,6 +202,7 @@ class RestController(Controller):
         data = await request.json()
 
         resource_id = deserialize_resource_id(data["resource_id"])
+
         self.orchestrator.add_to_queue(request.match_info["channel_name"], resource_id)
 
         return web.Response()
@@ -286,7 +287,12 @@ class RestController(Controller):
         self.logger().info("Start/pause the playback")
         queue_changed = self.orchestrator.play_pause(request.match_info["channel_name"])
 
-        return web.json_response({**self.get_channel_state_dict(request.match_info["channel_name"]), "queue_changed": queue_changed})
+        return web.json_response(
+            {
+                **self.get_channel_state_dict(request.match_info["channel_name"]),
+                "queue_changed": queue_changed,
+            }
+        )
 
     @docs(
         tags=["channels"],
@@ -314,7 +320,7 @@ class RestController(Controller):
     async def get_all_albums(self, request: Request) -> Response:
         json_albums = []
         for album in self.orchestrator.get_all_albums():
-            json_albums.append(vars(album))
+            json_albums.append(album.dict())
 
         return web.json_response({"albums": json_albums})
 
@@ -326,7 +332,7 @@ class RestController(Controller):
     async def get_album(self, request: Request) -> Response:
         resource_id = deserialize_resource_id(request.match_info["album_resource_id"])
 
-        return web.json_response(vars(self.orchestrator.get_album(resource_id)))
+        return web.json_response(self.orchestrator.get_album(resource_id).dict())
 
     @docs(
         tags=["albums"],
@@ -337,7 +343,7 @@ class RestController(Controller):
         resource_id = deserialize_resource_id(request.match_info["album_resource_id"])
 
         json_songs = [
-            vars(song) for song in self.orchestrator.get_songs_from_album(resource_id)
+            song.dict() for song in self.orchestrator.get_songs_from_album(resource_id)
         ]
 
         return web.json_response({"songs": json_songs})

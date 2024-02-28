@@ -30,7 +30,7 @@ class Queue(State):
 
         self.change_bottombar_state(self.current().text, PlayerStates.PLAYING)
 
-        self.list_buffer = self.list_buffer[self.list_index + 1:]
+        self.list_buffer = self.list_buffer[self.list_index + 1 :]
         self.list_index = 0
         self.update_list()
 

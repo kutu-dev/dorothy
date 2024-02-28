@@ -1,3 +1,4 @@
+import cProfile
 import sys
 from typing import Annotated, Optional
 

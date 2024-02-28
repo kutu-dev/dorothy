@@ -22,6 +22,8 @@ Remember that this is an indicative, and you shouldn't use it as the only refere
  - [ ] Fix circular import in nodes and models and add converting string to Resource type
  - [ ] Reduce duplicated code in
  - [ ] URI transformers (when Discord bot is in the works)
+ - [ ] Ensure player decorator may be safe to remove?
+ - [ ] Change get_logger()` function to a static property
 
 ---
 

@@ -1,11 +1,25 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Type
 
-import dorothy.nodes as nodes
 
-if TYPE_CHECKING:
-    from .nodes import NodeInstancePath
+@dataclass
+class NodeInstancePath:
+    plugin_name: str = field(default_factory=lambda: "")
+    node_type: str = field(default_factory=lambda: "")
+    node_name: str = field(default_factory=lambda: "")
+    instance_name: str = field(default_factory=lambda: "")
+
+    def sanitize(self, string: str) -> str:
+        return string.replace("&", "&&").replace(">", "&>")
+
+    def __str__(self) -> str:
+        return (
+            f"{self.sanitize(self.plugin_name)}"
+            + f">{self.sanitize(self.node_type)}"
+            + f">{self.sanitize(self.node_name)}"
+            + f">{self.sanitize(self.instance_name)}"
+        )
 
 
 class Resource(ABC):
@@ -18,7 +32,7 @@ class Resource(ABC):
 @dataclass
 class ResourceId:
     resource_type: Type[Resource]
-    node_instance_path: "NodeInstancePath"
+    node_instance_path: NodeInstancePath
     unique_id: str
 
     def sanitize(self, string: str) -> str:
@@ -34,24 +48,24 @@ class ResourceId:
 
 class Song(Resource):
     def __init__(
-        self, resource_id: ResourceId, duration: int, uri: str | None = None, title: str | None = None
+        self, resource_id: ResourceId, uri: str, duration: int, title: str | None = None, album_name: str | None = None, artist_name: str | None = None
     ) -> None:
         self.resource_id = resource_id
         self.uri = uri
-        self.title = title
         self.duration = duration
+        self.title = title
+        self.album_name = album_name
+        self.artist_name = artist_name
 
-    @property
-    def __dict__(self) -> dict[str, Any]:
+    def dict(self) -> dict[str, Any]:
         return {
             "resource_id": str(self.resource_id),
             "uri": self.uri,
+            "duration": self.duration,
             "title": self.title,
+            "album_name": self.album_name,
+            "artist_name": self.artist_name
         }
-
-    @__dict__.setter
-    def __dict__(self, value: dict[str, Any]) -> None:
-        self.dict = value
 
     @staticmethod
     def resource_name() -> str:
@@ -63,23 +77,18 @@ class Album(Resource):
         self,
         resource_id: ResourceId,
         title: str | None = None,
-        number_of_songs: int = 0,
+        song_list: list[Song] | None = None
     ) -> None:
         self.resource_id = resource_id
         self.title = title
-        self.number_of_songs = number_of_songs
+        self.song_list = song_list
 
-    @property
-    def __dict__(self) -> dict[str, Any]:
+    def dict(self) -> dict[str, Any]:
         return {
             "resource_id": str(self.resource_id),
             "title": self.title,
-            "number_of_songs": self.number_of_songs,
+            "song_list": [song.dict() for song in self.song_list]
         }
-
-    @__dict__.setter
-    def __dict__(self, value: dict[str, Any]) -> None:
-        self.dict = value
 
     @staticmethod
     def resource_name() -> str:

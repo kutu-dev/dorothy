@@ -14,6 +14,7 @@ from .states.album_list import AlbumList
 from .states.queue import Queue
 from .states.select_channel import SelectChannel
 
+
 @dataclass
 class BottombarState:
     current_song: str
@@ -56,7 +57,7 @@ class Tui:
     def print_line(self, line: int, text: str, *args, right_text="") -> None:
         empty_space_length = self.columns - len(text) - len(right_text)
 
-        line_text = text + " "*empty_space_length + right_text
+        line_text = text + " " * empty_space_length + right_text
 
         try:
             self.window.addstr(line, 0, line_text, *args)
@@ -70,9 +71,9 @@ class Tui:
         self.lines -= 1
 
         self.list_lines = (
-                self.lines
-                - self.list_vertical_top_padding
-                - self.list_vertical_bottom_padding
+            self.lines
+            - self.list_vertical_top_padding
+            - self.list_vertical_bottom_padding
         )
 
         self.print_line(1, "━" * self.columns)
@@ -89,7 +90,11 @@ class Tui:
     def change_channel(self, channel: str) -> None:
         self.channel = channel
 
-    def change_bottombar_state(self, new_current_song: str | None = None, new_player_state: PlayerStates | None = None) -> None:
+    def change_bottombar_state(
+        self,
+        new_current_song: str | None = None,
+        new_player_state: PlayerStates | None = None,
+    ) -> None:
         if new_current_song is not None:
             self.bottombar_state.current_song = new_current_song
 
@@ -215,8 +220,10 @@ class Tui:
                 raise UnsuccessfulRequest()
 
         self.change_bottombar_state(
-            channel_state["current_song"]["title"] if channel_state["current_song"] is not None else "N/A",
-            player_state
+            channel_state["current_song"]["title"]
+            if channel_state["current_song"] is not None
+            else "N/A",
+            player_state,
         )
 
     def change_state(self, state: Type[State], **kwargs) -> None:
@@ -233,7 +240,10 @@ class Tui:
 
     def start_mainloop(self):
         while True:
-            if self.notification_display_timestamp != 0 and time.time() - self.notification_display_timestamp > 1:
+            if (
+                self.notification_display_timestamp != 0
+                and time.time() - self.notification_display_timestamp > 1
+            ):
                 self.notification_display_timestamp = 0.0
                 self.print_bottombar()
 
@@ -291,7 +301,7 @@ class Tui:
                             back_state=type(self.state),
                             change_channel=self.change_channel,
                             change_blocked_state_keys=self.change_blocked_state_keys,
-                            change_bottombar_state_given_channel_state=self.change_bottombar_state_given_channel_state
+                            change_bottombar_state_given_channel_state=self.change_bottombar_state_given_channel_state,
                         )
                         self.blocked_state_keys = True
 
