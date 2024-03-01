@@ -3,7 +3,7 @@ from typing import Iterator
 from .logging import get_logger
 from .nodes import Provider
 from .channel import Channel, ChannelStates
-from .models import Album, ResourceId, Song
+from .models import Album, ResourceId, Song, Artist
 
 
 class Orchestrator:
@@ -20,17 +20,24 @@ class Orchestrator:
         for channel in self.channels.values():
             channel.check_if_song_finished()
 
-    def providers_generator(self) -> Iterator[Provider]:
+    def _providers_generator(self) -> Iterator[Provider]:
         for _, provider in self.providers.items():
             for _, instance in provider.items():
                 for _, provider_object in instance.items():
                     yield provider_object
 
+    def _access_provider(self, resource_id: ResourceId) -> Provider:
+        plugin_name: str = resource_id.node_instance_path.plugin_name
+        node_name: str = resource_id.node_instance_path.node_name
+        instance_name: str = resource_id.node_instance_path.instance_name
+
+        return self.providers[plugin_name][node_name][instance_name]
+
     # Provider methods
     def get_all_songs(self) -> list[Song]:
         songs: list[Song] = []
 
-        for provider in self.providers_generator():
+        for provider in self._providers_generator():
             songs.extend(provider.get_all_songs())
 
         return songs
@@ -39,18 +46,14 @@ class Orchestrator:
         if song_resource_id.resource_type is not Song:
             return None
 
-        plugin_name: str = song_resource_id.node_instance_path.plugin_name
-        node_name: str = song_resource_id.node_instance_path.node_name
-        instance_name: str = song_resource_id.node_instance_path.instance_name
-
-        return self.providers[plugin_name][node_name][instance_name].get_song(
+        return self._access_provider(song_resource_id).get_song(
             song_resource_id.unique_id
         )
 
     def get_all_albums(self) -> list[Album]:
         albums: list[Album] = []
 
-        for provider in self.providers_generator():
+        for provider in self._providers_generator():
             albums.extend(provider.get_all_albums())
 
         return albums
@@ -59,25 +62,17 @@ class Orchestrator:
         if album_resource_id.resource_type is not Album:
             return None
 
-        plugin_name: str = album_resource_id.node_instance_path.plugin_name
-        node_name: str = album_resource_id.node_instance_path.node_name
-        instance_name: str = album_resource_id.node_instance_path.instance_name
-
-        return self.providers[plugin_name][node_name][instance_name].get_album(
+        return self._access_provider(album_resource_id).get_album(
             album_resource_id.unique_id
         )
 
-    def get_songs_from_album(self, album_resource_id: ResourceId):
-        if album_resource_id.resource_type is not Album:
-            return None
+    def get_all_artists(self) -> list[Artist]:
+        artists: list[Artist] = []
 
-        plugin_name: str = album_resource_id.node_instance_path.plugin_name
-        node_name: str = album_resource_id.node_instance_path.node_name
-        instance_name: str = album_resource_id.node_instance_path.instance_name
+        for provider in self._providers_generator():
+            artists.extend(provider.get_all_artists())
 
-        return self.providers[plugin_name][node_name][
-            instance_name
-        ].get_songs_from_album(album_resource_id.unique_id)
+        return artists
 
     # Listener methods
     def add_to_queue(self, channel: str, resource_id: ResourceId) -> None:
@@ -95,7 +90,9 @@ class Orchestrator:
                 songs.append(song)
 
         elif resource_id.resource_type is Album:
-            songs = self.get_songs_from_album(resource_id)
+            songs = self.get_album(resource_id).song_list
+
+        #TODO ARTIST HERE
 
         for song in songs:
             self.channels[channel].insert(song, insert_position)
@@ -133,7 +130,7 @@ class Orchestrator:
     def cleanup_nodes(self) -> None:
         self._logger.info("Cleaning nodes...")
 
-        for provider in self.providers_generator():
+        for provider in self._providers_generator():
             if not provider.cleanup():
                 self._logger.warning(
                     f'Provider "{provider.node_instance_path}" has failed cleanup!'

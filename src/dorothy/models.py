@@ -48,7 +48,13 @@ class ResourceId:
 
 class Song(Resource):
     def __init__(
-        self, resource_id: ResourceId, uri: str, duration: int, title: str | None = None, album_name: str | None = None, artist_name: str | None = None
+        self,
+        resource_id: ResourceId,
+        uri: str,
+        duration: int,
+        title: str | None = None,
+        album_name: str | None = None,
+        artist_name: str | None = None,
     ) -> None:
         self.resource_id = resource_id
         self.uri = uri
@@ -64,7 +70,7 @@ class Song(Resource):
             "duration": self.duration,
             "title": self.title,
             "album_name": self.album_name,
-            "artist_name": self.artist_name
+            "artist_name": self.artist_name,
         }
 
     @staticmethod
@@ -77,7 +83,7 @@ class Album(Resource):
         self,
         resource_id: ResourceId,
         title: str | None = None,
-        song_list: list[Song] | None = None
+        song_list: list[Song] | None = None,
     ) -> None:
         self.resource_id = resource_id
         self.title = title
@@ -87,7 +93,7 @@ class Album(Resource):
         return {
             "resource_id": str(self.resource_id),
             "title": self.title,
-            "song_list": [song.dict() for song in self.song_list]
+            "song_list": [song.dict() for song in self.song_list],
         }
 
     @staticmethod
@@ -95,34 +101,24 @@ class Album(Resource):
         return "album"
 
 
-def deserialize_resource_id(serialized_resource: str) -> ResourceId:
-    deserialized_data = ["", "", ""]
-    deserialized_index = 0
+class Artist(Resource):
+    def __init__(
+        self,
+        resource_id: ResourceId,
+        name: str | None = None,
+        albums: list[Album] | None = None,
+    ) -> None:
+        self.resource_id = resource_id
+        self.name = name
+        self.albums = albums
 
-    escape_next = False
-    for character in serialized_resource:
-        if character == "&" and not escape_next:
-            escape_next = True
-            continue
+    def dict(self) -> dict[str, Any]:
+        return {
+            "resource_id": self.resource_id,
+            "name": self.name,
+            "albums": [album.dict() for album in self.albums]
+        }
 
-        if character == "@" and not escape_next:
-            if deserialized_index < 2:
-                deserialized_index += 1
-            continue
-
-        deserialized_data[deserialized_index] += character
-
-    resource_type: Type[Resource]
-    match deserialized_data[0]:
-        case "song":
-            resource_type = Song
-        case "album":
-            resource_type = Album
-        case _:
-            raise ValueError(f"Unknown resource type: {deserialized_data[0]}")
-
-    return ResourceId(
-        resource_type,
-        nodes.deserialize_node_instance_path(deserialized_data[1]),
-        deserialized_data[2],
-    )
+    @staticmethod
+    def resource_name() -> str:
+        return "artist"

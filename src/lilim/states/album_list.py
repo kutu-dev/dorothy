@@ -31,7 +31,7 @@ class AlbumList(State):
         except UnsuccessfulRequest:
             return
 
-        number_of_songs_text = f'({selected_album.internal["number_of_songs"]} songs)'
+        number_of_songs_text = f'({len(selected_album.internal["song_list"])} songs)'
 
         self.notification(
             f"Added album {selected_album.text} {number_of_songs_text} to the queue"
@@ -43,8 +43,8 @@ class AlbumList(State):
 
         try:
             song_list = self.request(
-                "GET", f'albums/{selected_album.internal["resource_id"]}/songs'
-            ).json()["songs"]
+                "GET", f'albums/{selected_album.internal["resource_id"]}'
+            ).json()["song_list"]
         except UnsuccessfulRequest:
             song_list = []
 

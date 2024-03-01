@@ -2,7 +2,7 @@ from multiprocessing import Process, Queue
 from pathlib import Path
 from typing import Any, Callable
 
-from dorothy.models import Album, ResourceId, Song
+from dorothy.models import Album, ResourceId, Song, Artist
 from dorothy.nodes import NodeInstancePath, NodeManifest, Provider
 from platformdirs import (
     user_desktop_dir,
@@ -146,7 +146,7 @@ class FilesystemProvider(Provider):
                 song_metadata.duration,
                 song_metadata.title,
                 song_metadata.album,
-                song_metadata.artist
+                song_metadata.artist,
             )
 
         except TinyTagException:
@@ -159,8 +159,12 @@ class FilesystemProvider(Provider):
             if song is None:
                 continue
 
-            album_name = song.album_name if song.album_name is not None else "Unknown album"
-            artist_name = song.artist_name if song.artist_name is not None else "Unknown artist"
+            album_name = (
+                song.album_name if song.album_name is not None else "Unknown album"
+            )
+            artist_name = (
+                song.artist_name if song.artist_name is not None else "Unknown artist"
+            )
 
             self.albums.setdefault(album_name, []).append(song_path)
             self.artists.setdefault(artist_name, []).append(album_name)
@@ -169,7 +173,12 @@ class FilesystemProvider(Provider):
         songs: list[Song] = []
 
         for song_path in self.songs_paths:
-            songs.append(self.get_song(song_path))
+            song = self.get_song(song_path)
+
+            if song is None:
+                continue
+
+            songs.append(song)
 
         return songs
 
@@ -177,7 +186,7 @@ class FilesystemProvider(Provider):
         return Album(
             self.create_resource_id(Album, album_unique_id),
             album_unique_id,
-            [self.get_song(song_path) for song_path in self.albums[album_unique_id]]
+            [self.get_song(song_path) for song_path in self.albums[album_unique_id]],
         )
 
     def get_all_albums(self) -> list[Album]:
@@ -187,3 +196,18 @@ class FilesystemProvider(Provider):
             albums.append(self.get_album(album_name))
 
         return albums
+
+    def get_artist(self, artist_unique_id: str) -> Artist:
+        return Artist(
+            self.create_resource_id(Artist, artist_unique_id),
+            artist_unique_id,
+            [self.get_album(album) for album in self.albums.keys()]
+        )
+
+    def get_all_artists(self) -> list[Artist]:
+        artists: list[Artist] = []
+
+        for artist in self.artists.keys():
+            artists.append(self.get_artist(artist))
+
+        return artists

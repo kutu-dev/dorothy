@@ -35,7 +35,6 @@ class Channel:
         )
 
     def check_if_song_finished(self) -> None:
-        print(self.channel_state)
         if self.channel_state != ChannelStates.PLAYING:
             return
 
