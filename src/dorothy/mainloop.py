@@ -20,14 +20,15 @@ async def mainloop(config_manager: ConfigManager) -> None:
     logger.info("Starting the mainloop...")
 
     try:
-        await asyncio.gather(*controller_start_functions)
+        await asyncio.gather(*controller_start_functions, return_exceptions=True)
 
         while True:
             orchestrator.check_if_song_finished()
+            print(orchestrator.get_all_songs())
             await asyncio.sleep(0.5)
     finally:
         logger.info("Shutting down Dorothy")
-        orchestrator.cleanup_nodes()
+        orchestrator._cleanup_nodes()
 
         for controller in controllers:
             if not controller.cleanup():

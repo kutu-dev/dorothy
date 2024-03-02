@@ -22,6 +22,8 @@ from dorothy.nodes import Controller, NodeInstancePath, NodeManifest
 from dorothy.orchestrator import Orchestrator
 from marshmallow import Schema, fields
 
+from dorothy.plugins.builtin.exceptions import FailedCreatePlaybinPlayer
+
 
 class ResourceId(Schema):
     resource_id = fields.Str(required=True)
@@ -77,7 +79,7 @@ class RestController(Controller):
         self.runner = web.AppRunner(app)
 
     async def start(self) -> None:
-        self.logger().info(f"Starting REST API server at localhost:{self.port}")
+        self._logger.info(f"Starting REST API server at localhost:{self.port}")
 
         await self.runner.setup()
         site = web.TCPSite(self.runner, "localhost", self.port)
@@ -286,7 +288,7 @@ class RestController(Controller):
         responses={200: {"description": "Playback started"}},
     )
     async def play(self, request: Request) -> Response:
-        self.logger().info("Starting the playback")
+        self._logger.info("Starting the playback")
         self.orchestrator.play(request.match_info["channel_name"])
 
         return web.Response()
@@ -297,7 +299,7 @@ class RestController(Controller):
         responses={200: {"description": "Playback paused"}},
     )
     async def pause(self, request: Request) -> Response:
-        self.logger().info("Pausing the playback")
+        self._logger.info("Pausing the playback")
         self.orchestrator.pause(request.match_info["channel_name"])
 
         return web.Response()
@@ -312,7 +314,7 @@ class RestController(Controller):
         description='The state of the requested channel. "player_state" can be "PLAYING", "PAUSED" or "STOPPED".',
     )
     async def play_pause(self, request: Request) -> Response:
-        self.logger().info("Start/pause the playback")
+        self._logger.info("Start/pause the playback")
         queue_changed = self.orchestrator.play_pause(request.match_info["channel_name"])
 
         return web.json_response(

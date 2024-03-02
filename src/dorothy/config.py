@@ -23,7 +23,7 @@ class ConfigManager:
         self.config_path = (
             custom_config_path
             if custom_config_path is not None
-            else user_config_dir("dorothy")
+            else Path(user_config_dir("dorothy"))
         )
 
     def handle_node_config(

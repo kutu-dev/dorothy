@@ -2,11 +2,11 @@
 
 ## Fix
 ### Bugs
+ - [ ] Some things output to info instead of debug.
  - [ ] Player checks in listener are no longer needed
- - [ ] Use a custom function to get the logger is no longer necessary
  - [ ] Terminal breaks on exit or crash of `lilim`
  - [ ] Disable is not working
- - [ ] Remove colors from logging
+ - [ ] Correct shutdown
 
 ## Exception overhaul
  - [ ] Invalid config checker

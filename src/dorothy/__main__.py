@@ -4,7 +4,7 @@ from logging import getLogger
 from dorothy.config import ConfigManager
 from .args import get_args
 from .logging import configure_logging
-from .daemon import mainloop
+from .mainloop import mainloop
 
 
 def main() -> None:

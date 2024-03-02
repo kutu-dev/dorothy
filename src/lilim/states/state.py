@@ -50,7 +50,7 @@ class State(ABC):
     ) -> Response:
         try:
             response = requests.request(
-                verb, f"http://localhost:6972/{path}", json=json
+                verb, f"http://localhost:6969/{path}", json=json
             )
         except requests.exceptions.ConnectionError:
             self.notification("ERROR: Connection to Dorothy refused")

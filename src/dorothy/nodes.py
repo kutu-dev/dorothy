@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Type, TypeVar, Callable
 from typing_extensions import override
 from logging import getLogger
+
+from .exceptions import NodeFailureException
 
 if TYPE_CHECKING:
     from .orchestrator import Orchestrator
@@ -63,6 +65,19 @@ class Node(ABC):
 
         return None
 
+    def raise_failure_node_exception(self, message: str, exception: type[NodeFailureException] = NodeFailureException) -> None:
+        """
+
+        :param message:
+        :param exception:
+        :return:
+        """
+
+        self._logger.error(
+            f'Node "{self.node_instance_path}" has raised a "{exception.__name__}" exception with the message: {message}'
+        )
+        raise exception()
+
 
 NODE_SUBCLASS = TypeVar("NODE_SUBCLASS", bound=Node)
 
@@ -91,7 +106,6 @@ class Controller(Node, ABC):
     async def start(self) -> None:
         """An async method that is called when the controller is started in the mainloop.
         This method should avoid be executed for a long time.
-
         """
 
         ...
@@ -214,6 +228,7 @@ class Listener(Node, ABC):
         ...
 
 
+@dataclass
 class PluginManifest:
     """A class that holds all the nodes provided by a plugin."""
 

@@ -1,2 +1,5 @@
-class FailedCreatePlaybinPlayer(Exception):
+from dorothy.exceptions import NodeFailureException
+
+
+class FailedCreatePlaybinPlayer(NodeFailureException):
     ...

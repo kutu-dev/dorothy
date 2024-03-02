@@ -83,44 +83,46 @@ class PluginHandler:
                 node_manifest = node.get_node_manifest()
                 node_config = self._config_manager.handle_node_config(plugin.name, node)
 
-                for instance_name, instance_config in node_config:
+                for instance_name, instance_config in node_config.items():
                     node_instance_path = NodeInstancePath(
                         plugin_name=plugin.name,
                         node_name=node_manifest.name,
                         instance_name=instance_name,
                     )
 
-                    match node:
-                        case Controller():
-                            node_instance_path.node_type = "controller"
+                    if issubclass(node, Controller):
+                        node_instance_path.node_type = "controller"
 
-                            controllers.append(
-                                node(instance_config, node_instance_path, instance_name)
+                        controllers.append(
+                            node(instance_config, node_instance_path, orchestrator)
+                        )
+
+                    elif issubclass(node, Provider):
+                        node_instance_path.node_type = "provider"
+
+                        if plugin.name not in orchestrator._providers:
+                            orchestrator._providers[plugin.name] = {}
+
+                        if node_manifest.name not in orchestrator._providers[plugin.name]:
+                            orchestrator._providers[plugin.name][node_manifest.name] = {}
+
+                        orchestrator._providers[plugin.name][node_manifest.name][instance_name] = node(instance_config, node_instance_path)
+
+                    elif issubclass(node, Listener):
+                        node_instance_path.node_type = "listener"
+
+                        for channel in instance_config["channels"]:
+                            if channel not in orchestrator._channels:
+                                orchestrator._channels[channel] = Channel(channel)
+
+                            orchestrator._channels[channel]._listeners.append(
+                                node(
+                                    instance_config,
+                                    node_instance_path,
+                                )
                             )
 
-                        case Provider():
-                            node_instance_path.node_type = "provider"
-
-                            orchestrator._providers[plugin.name][node_manifest.name][
-                                instance_name
-                            ] = node(instance_config, node_instance_path, instance_name)
-
-                        case Listener():
-                            node_instance_path.node_type = "listener"
-
-                            for channel in instance_config["channels"]:
-                                if channel not in orchestrator._channels:
-                                    orchestrator._channels[channel] = Channel(channel)
-
-                                orchestrator._channels[channel].listeners.append(
-                                    node(
-                                        instance_config,
-                                        node_instance_path,
-                                        instance_name,
-                                    )
-                                )
-
-                        case _:
-                            raise ValueError(f'Unknown node type of node "{node}"')
+                    else:
+                        raise ValueError(f'Unknown node type of node "{node}"')
 
         return orchestrator, controllers

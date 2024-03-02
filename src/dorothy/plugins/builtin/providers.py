@@ -2,7 +2,7 @@ from multiprocessing import Process, Queue
 from pathlib import Path
 from typing import Any, Callable
 
-from dorothy.models import Album, ResourceId, Song, Artist
+from dorothy.models import Album, ResourceId, Song, Artist, SongResourceId
 from dorothy.nodes import NodeInstancePath, NodeManifest, Provider
 from platformdirs import (
     user_desktop_dir,
@@ -30,11 +30,11 @@ class FilesystemProvider(Provider):
     ) -> None:
         super().__init__(config, node_instance_path)
 
-        self.logger().info("Parsing source paths in the config...")
+        self._logger.info("Parsing source paths in the config...")
         self.paths = self.parse_paths(self.config["paths"])
         self.remove_redundant_source_paths()
 
-        self.logger().info("Parsing ignore paths in the config...")
+        self._logger.info("Parsing ignore paths in the config...")
         self.exclude_paths = self.parse_paths(self.config["exclude_paths"])
 
         self.songs_paths = self.get_songs_paths()
@@ -82,13 +82,13 @@ class FilesystemProvider(Provider):
                     final_path += char
                     escape_next = False
 
-            self.logger().info(f'Parsed path "{path}" to "{final_path}"')
+            self._logger.info(f'Parsed path "{path}" to "{final_path}"')
             parsed_paths.append(Path(final_path))
 
         return parsed_paths
 
     def remove_redundant_source_paths(self) -> None:
-        self.logger().info("Removing redundant source paths...")
+        self._logger.info("Removing redundant source paths...")
         redundant_paths_indexes: set[int] = set()
 
         for check_index, path_to_check in enumerate(self.paths):
@@ -141,7 +141,7 @@ class FilesystemProvider(Provider):
             if song_metadata.duration is None:
                 return None
             return Song(
-                self.create_resource_id(Song, str(song_path.absolute())),
+                SongResourceId(self.node_instance_path, str(song_path.absolute())),
                 song_path.as_uri(),
                 song_metadata.duration,
                 song_metadata.title,
@@ -170,6 +170,7 @@ class FilesystemProvider(Provider):
             self.artists.setdefault(artist_name, []).append(album_name)
 
     def get_all_songs(self) -> list[Song]:
+        self.raise_failure_node_exception("A")
         songs: list[Song] = []
 
         for song_path in self.songs_paths:
