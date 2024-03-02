@@ -28,6 +28,9 @@ class Channel:
             f'Adding song "{song.title}" to queue in position "{insert_position}"'
         )
 
+        if insert_position > len(self.queue):
+            return
+
         self.queue.insert(
             insert_position if insert_position <= len(self.queue) else len(self.queue),
             song,

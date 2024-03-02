@@ -56,7 +56,7 @@ class ResourceId(ABC):
     @abstractmethod
     def resource_name(self) -> str:
         """Function that returns the string representation of the resource type."""
-        
+
         ...
 
     def __str__(self) -> str:
@@ -74,7 +74,7 @@ class ResourceId(ABC):
 
 class SongResourceId(ResourceId):
     """The resource id of a song."""
-    
+
     def resource_name(self) -> str:
         return "song"
 
@@ -82,7 +82,7 @@ class SongResourceId(ResourceId):
 @dataclass
 class Song:
     """Dataclass that holds all the relevant information of a song."""
-    
+
     resource_id: SongResourceId
     uri: str
     duration: int
@@ -92,7 +92,7 @@ class Song:
 
     def dict(self) -> dict[str, Any]:
         """Function that returns a dictionary representation of a song."""
-        
+
         return {
             "resource_id": str(self.resource_id),
             "uri": self.uri,
@@ -112,18 +112,18 @@ class AlbumResourceId(ResourceId):
 
 class Album:
     """Dataclass that holds all the relevant information of a album."""
-    
+
     resource_id: AlbumResourceId
     title: str | None = field(default_factory=lambda: None)
-    song_list: list[Song] | None = field(default_factory=lambda: None)
+    songs: list[Song] | None = field(default_factory=lambda: None)
 
     def dict(self) -> dict[str, Any]:
         """Function that returns a dictionary representation of an album."""
-        
+
         return {
             "resource_id": str(self.resource_id),
             "title": self.title,
-            "song_list": [song.dict() for song in self.song_list],
+            "songs": [song.dict() for song in self.songs],
         }
 
 
@@ -136,14 +136,14 @@ class ArtistResourceId(ResourceId):
 
 class Artist:
     """Dataclass that holds all the relevant information of a artist."""
-    
+
     resource_id: ArtistResourceId
     name: str | None = field(default_factory=lambda: None)
     albums: list[Album] | None = field(default_factory=lambda: None)
 
     def dict(self) -> dict[str, Any]:
         """Function that returns a dictionary representation of an artist."""
-        
+
         return {
             "resource_id": self.resource_id,
             "name": self.name,

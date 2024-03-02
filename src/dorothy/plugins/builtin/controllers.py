@@ -17,7 +17,6 @@ from aiohttp_apispec import (
     validation_middleware,
 )
 
-from dorothy.logging import get_logger
 from dorothy.deserializers import deserialize_resource_id
 from dorothy.nodes import Controller, NodeInstancePath, NodeManifest
 from dorothy.orchestrator import Orchestrator
@@ -178,7 +177,7 @@ class RestController(Controller):
     )
     @response_schema(ChannelList, 200, description="The available channels names")
     async def get_all_channels(self, request: Request) -> Response:
-        return web.json_response({"channels": list(self.orchestrator.channels.keys())})
+        return web.json_response({"channels": list(self.orchestrator._channels.keys())})
 
     @docs(
         tags=["channels"],

@@ -101,7 +101,7 @@ class PluginHandler:
                         case Provider():
                             node_instance_path.node_type = "provider"
 
-                            orchestrator.providers[plugin.name][node_manifest.name][
+                            orchestrator._providers[plugin.name][node_manifest.name][
                                 instance_name
                             ] = node(instance_config, node_instance_path, instance_name)
 
@@ -109,10 +109,10 @@ class PluginHandler:
                             node_instance_path.node_type = "listener"
 
                             for channel in instance_config["channels"]:
-                                if channel not in orchestrator.channels:
-                                    orchestrator.channels[channel] = Channel(channel)
+                                if channel not in orchestrator._channels:
+                                    orchestrator._channels[channel] = Channel(channel)
 
-                                orchestrator.channels[channel].listeners.append(
+                                orchestrator._channels[channel].listeners.append(
                                     node(
                                         instance_config,
                                         node_instance_path,

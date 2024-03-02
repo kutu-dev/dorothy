@@ -1,7 +1,7 @@
-from logging import Logger
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Type, TypeVar, override
+from typing import TYPE_CHECKING, Any, Type, TypeVar
+from typing_extensions import override
 from logging import getLogger
 
 if TYPE_CHECKING:
@@ -175,6 +175,7 @@ class Provider(Node, ABC):
 
 class Listener(Node, ABC):
     """A node that plays URIs provided by Dorothy."""
+
     def __init__(
         self, config: dict[str, Any], node_instance_path: NodeInstancePath
     ) -> None:
