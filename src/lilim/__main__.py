@@ -1,8 +1,10 @@
+import curses
+
 from .tui import Tui
 
 
 def main() -> None:
-    Tui()
+    curses.wrapper(Tui)
 
 
 if __name__ == "__main__":

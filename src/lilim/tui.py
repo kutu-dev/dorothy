@@ -22,8 +22,13 @@ class BottombarState:
 
 
 class Tui:
-    def __init__(self):
-        self.window = self.setup_curses()
+    def __init__(self, window: curses.window):
+        self.window = window
+
+        curses.use_default_colors()
+        curses.init_pair(1, curses.COLOR_BLUE, -1)
+
+        curses.curs_set(0)
 
         self.lines = 0
         self.columns = 0
@@ -124,22 +129,6 @@ class Tui:
         # printing to the most right character of the line silently fails
         # so a manually repainting is needed
         self.window.addch(self.lines - 1, self.columns - 1, " ")
-
-    def setup_curses(self):
-        window = curses.initscr()
-        window.keypad(True)
-        window.timeout(1)
-
-        curses.noecho()
-        curses.cbreak()
-
-        curses.start_color()
-        curses.use_default_colors()
-        curses.init_pair(1, curses.COLOR_BLUE, -1)
-
-        curses.curs_set(0)
-
-        return window
 
     def update_list(self) -> None:
         offset = max(0, self.state.list_index - int(self.list_lines / 2))

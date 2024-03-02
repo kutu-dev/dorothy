@@ -78,7 +78,7 @@ class PlaybinListener(Listener):
         if res == Gst.StateChangeReturn.FAILURE:
             self.logger().error("Unable to stop the playing song")
 
-    def cleanup(self) -> bool:
+    def cleanup(self) -> None | str:
         self.stop()
 
-        return True
+        return None

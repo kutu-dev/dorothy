@@ -15,23 +15,37 @@ async def mainloop(config_manager: ConfigManager) -> None:
     plugin_handler = PluginHandler(config_manager)
 
     orchestrator, controllers = plugin_handler.load_nodes()
-    controller_start_functions = [controller.start() for controller in controllers]
+    controlers_tasks = [asyncio.create_task(controller.start()) for controller in controllers]
 
     logger.info("Starting the mainloop...")
 
     try:
-        await asyncio.gather(*controller_start_functions, return_exceptions=True)
+        await asyncio.gather(*controlers_tasks, return_exceptions=True)
 
         while True:
             orchestrator.check_if_song_finished()
-            print(orchestrator.get_all_songs())
             await asyncio.sleep(0.5)
+
+    except asyncio.exceptions.CancelledError:
+        pass
+
     finally:
         logger.info("Shutting down Dorothy")
+
         orchestrator._cleanup_nodes()
 
         for controller in controllers:
-            if not controller.cleanup():
+            cleanup_message = await controller.cleanup()
+            if cleanup_message is not None:
                 logger.warning(
-                    f'Controller "{controller.node_instance_path}" has failed cleanup!'
+                    f'Controller "{controller.node_instance_path}" has failed cleanup with error "{cleanup_message}"'
                 )
+
+        tasks = asyncio.all_tasks()
+        # get the current task
+        current = asyncio.current_task()
+        # remove current task from all tasks
+        tasks.remove(current)
+        # cancel all remaining running tasks
+        for task in tasks:
+            task.cancel()

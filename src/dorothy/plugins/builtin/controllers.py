@@ -85,10 +85,9 @@ class RestController(Controller):
         site = web.TCPSite(self.runner, "localhost", self.port)
         await site.start()
 
-    async def cleanup(self) -> bool:
-        # TODO NOT WAITED
-        self.runner.cleanup()
-        return True
+    async def cleanup(self) -> None | str:
+        await self.runner.cleanup()
+        return None
 
     def get_web_app(self) -> aiohttp.web.Application:
         app = web.Application()

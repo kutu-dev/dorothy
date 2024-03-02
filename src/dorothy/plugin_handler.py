@@ -83,7 +83,13 @@ class PluginHandler:
                 node_manifest = node.get_node_manifest()
                 node_config = self._config_manager.handle_node_config(plugin.name, node)
 
+                self._logger.info(f'Loading node "{node_manifest.name}" from plugin "{plugin.name}"')
+
                 for instance_name, instance_config in node_config.items():
+                    if instance_config["disabled"]:
+                        self._logger.info(f'The instance "{instance_name}" is disabled, skipping it...')
+                        continue
+
                     node_instance_path = NodeInstancePath(
                         plugin_name=plugin.name,
                         node_name=node_manifest.name,

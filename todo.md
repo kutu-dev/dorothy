@@ -2,21 +2,20 @@
 
 ## Fix
 ### Bugs
- - [ ] Some things output to info instead of debug.
- - [ ] Player checks in listener are no longer needed
- - [ ] Terminal breaks on exit or crash of `lilim`
- - [ ] Disable is not working
- - [ ] Correct shutdown
+ - [ ] Refactor builtin plugin
+   - [ ] Add docstrings in all functions and classes inside the plugin
+   - [ ] Clean up FilesystemProvider
+   - [ ] Check types (and improve docs?) in RestController
+   - [ ] Player checks in PlaybinListener are no longer needed
 
 ## Exception overhaul
- - [ ] Invalid config checker
- - [ ] When a Exception occurs loading a plugin
- - [ ] When cleanup instead of return bool (?) CleanupFailedException
+ - [ ] Invalid config check
+   - [ ] Don't instance the node if its config is malformed
+   - [ ] Silently add missing fields in the TOML file
+   - [ ] Check type integrity (?)
+   - [ ] Add a migration system (?)
 
 ### Code duplication
- - [ ] Resource id duplicated type
- - [ ] PluginHandler
- - [ ] Orchestrator
  - [ ] builtin.providers:FilesystemProvider
 
 ## New features
@@ -27,4 +26,5 @@
  - [ ] URI transformers (when Discord bot is in the works)
 
 ### Lilim
+- Use extra line and column
 - Search with `/`

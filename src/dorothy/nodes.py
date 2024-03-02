@@ -56,15 +56,6 @@ class Node(ABC):
 
         return {}
 
-    async def cleanup(self) -> None | str:
-        """An overrideable function that is run when the application is shutting down,
-        should return None when the cleanup is successful or an error in a string to notify the user of the incidence.
-
-        :return: None when everything is ok or an error in a string if something gone wrong
-        """
-
-        return None
-
     def raise_failure_node_exception(self, message: str, exception: type[NodeFailureException] = NodeFailureException) -> None:
         """
 
@@ -102,6 +93,15 @@ class Controller(Node, ABC):
 
         self.orchestrator = orchestrator
 
+    async def cleanup(self) -> None | str:
+        """An overrideable function that is run when the application is shutting down,
+        should return None when the cleanup is successful or an error in a string to notify the user of the incidence.
+
+        :return: None when everything is ok or an error in a string if something gone wrong
+        """
+
+        return None
+
     @abstractmethod
     async def start(self) -> None:
         """An async method that is called when the controller is started in the mainloop.
@@ -128,6 +128,15 @@ class Provider(Node, ABC):
         """
 
         super().__init__(config, node_instance_path)
+
+    def cleanup(self) -> None | str:
+        """An overrideable function that is run when the application is shutting down,
+        should return None when the cleanup is successful or an error in a string to notify the user of the incidence.
+
+        :return: None when everything is ok or an error in a string if something gone wrong
+        """
+
+        return None
 
     @abstractmethod
     def get_song(self, unique_song_id: str) -> Song | None:
@@ -205,6 +214,15 @@ class Listener(Node, ABC):
     @override
     def extra_node_default_configs() -> dict[str, Any]:
         return {"channels": ["main"]}
+
+    def cleanup(self) -> None | str:
+        """An overrideable function that is run when the application is shutting down,
+        should return None when the cleanup is successful or an error in a string to notify the user of the incidence.
+
+        :return: None when everything is ok or an error in a string if something gone wrong
+        """
+
+        return None
 
     @abstractmethod
     def play(self, song: Song) -> None:

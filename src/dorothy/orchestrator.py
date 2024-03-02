@@ -318,9 +318,10 @@ class Orchestrator:
         self._logger.info("Cleaning provider nodes...")
         for provider in self._providers_generator():
             try:
-                if not provider.cleanup():
+                cleanup_message = provider.cleanup()
+                if cleanup_message is not None:
                     self._logger.warning(
-                        f'Provider "{provider.node_instance_path}" has failed cleanup'
+                        f'Provider "{provider.node_instance_path}" has failed cleanup with error "{cleanup_message}"'
                     )
             except NodeFailureException:
                 # Just ignore it as the "raise_failure_node_exception" function that raised the exception

@@ -169,10 +169,11 @@ class Channel:
 
         for listener in self._listeners:
             try:
-                if not listener.cleanup():
+                cleanup_message = listener.cleanup()
+                if cleanup_message is not None:
                     self._logger.warning(
-                        f'Listener "{str(listener.node_instance_path)}" has failed cleanup'
-                )
+                        f'Provider "{listener.node_instance_path}" has failed cleanup with error "{cleanup_message}"'
+                    )
             except NodeFailureException:
                 # Just ignore it as the "raise_failure_node_exception" function that raised the exception
                 # should already have informed the user about the exception.
