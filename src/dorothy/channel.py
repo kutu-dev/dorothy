@@ -1,7 +1,6 @@
 import time
 from enum import Enum
 
-from .logging import get_logger
 from .nodes import Listener
 from .models import Song
 

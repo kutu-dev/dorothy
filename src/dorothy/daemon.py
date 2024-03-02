@@ -1,43 +1,36 @@
 import asyncio
-import sys
-from setproctitle import setproctitle
+from logging import getLogger
 
 from .config import ConfigManager
-from .logging import get_logger
-from .nodes import Controller
-from .orchestrator import Orchestrator
 from .plugin_handler import PluginHandler
 
 
-async def mainloop(orchestrator: Orchestrator, controllers: list[Controller]):
-    controller_start_functions = [controller.start() for controller in controllers]
-    await asyncio.gather(*controller_start_functions)
+async def mainloop(config_manager: ConfigManager) -> None:
+    """Get all the configured plugins and starts all the controllers.
 
-    while True:
-        orchestrator.check_if_song_finished()
-        await asyncio.sleep(0.5)
+    :param config_manager: A ConfigManager instance for the plugin handler.
+    """
 
-
-def start_daemon() -> None:
-    setproctitle("dorothy-daemon")
-
-    logger = get_logger(__name__)
-    config_manager = ConfigManager()
+    logger = getLogger(__name__)
     plugin_handler = PluginHandler(config_manager)
-    nodes = plugin_handler.load_nodes()
+
+    orchestrator, controllers = plugin_handler.load_nodes()
+    controller_start_functions = [controller.start() for controller in controllers]
+
+    logger.info("Starting the mainloop...")
 
     try:
-        logger.info("Starting the mainloop...")
-        asyncio.run(mainloop(nodes.orchestrator, nodes.controllers))
-    except KeyboardInterrupt:
-        pass
-    finally:
-        nodes.orchestrator.cleanup_nodes()
+        await asyncio.gather(*controller_start_functions)
 
-        for controller in nodes.controllers:
+        while True:
+            orchestrator.check_if_song_finished()
+            await asyncio.sleep(0.5)
+    finally:
+        logger.info("Shutting down Dorothy")
+        orchestrator.cleanup_nodes()
+
+        for controller in controllers:
             if not controller.cleanup():
                 logger.warning(
                     f'Controller "{controller.node_instance_path}" has failed cleanup!'
                 )
-
-    sys.exit()

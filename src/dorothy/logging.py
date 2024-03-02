@@ -1,47 +1,28 @@
 import logging
-
-import colorama
-
-
-def dim(message: str) -> str:
-    return f"{colorama.Style.DIM}{message}{colorama.Style.RESET_ALL}"
+from logging import basicConfig, INFO
 
 
-class ColorizedFormatter(logging.Formatter):
-    """Custom formatter used to make log messages colored according to their level"""
+def configure_logging(log_level: str) -> None:
+    """Configure the basic logging for all the app.
 
-    def format(self, record: logging.LogRecord) -> str:
-        colors = {
-            logging.DEBUG: colorama.Fore.CYAN,
-            logging.INFO: colorama.Fore.GREEN,
-            logging.WARNING: colorama.Fore.YELLOW,
-            logging.ERROR: colorama.Fore.RED,
-            logging.CRITICAL: colorama.Fore.MAGENTA,
-        }
+    :param log_level: Logging level given in a string.
+    """
 
-        colorized_log_level = (
-            f"[{colors[record.levelno]} %(levelname)s {colorama.Style.RESET_ALL}]"
-        )
+    match log_level.lower():
+        case "critical":
+            log_level_int = logging.CRITICAL
+        case "error":
+            log_level_int = logging.ERROR
+        case "warning":
+            log_level_int = logging.WARNING
+        case "info":
+            log_level_int = logging.INFO
+        case "debug":
+            log_level_int = logging.DEBUG
+        case _:
+            raise ValueError("An invalid log level string was provided")
 
-        formatter = logging.Formatter(
-            f'{colorized_log_level} %(asctime)s {dim("(%(name)s)")} %(message)s'
-        )
-
-        return formatter.format(record)
-
-
-def get_logger(logger_name: str) -> logging.Logger:
-    logger = logging.getLogger(logger_name)
-    logger.setLevel(logging.DEBUG)
-
-    ch = logging.StreamHandler()
-    # TODO This should be managed by a global CLI flag when starting the daemon
-    #  or using an entry in the config (more prone to errors?)
-    ch.setLevel(logging.INFO)
-
-    formatter = ColorizedFormatter()
-
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
-
-    return logger
+    basicConfig(
+        level=log_level_int,
+        format="[ %(levelname)s ] %(asctime)s (%(name)s) %(message)s",
+    )

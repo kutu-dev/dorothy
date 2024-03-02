@@ -5,65 +5,94 @@ from typing import TYPE_CHECKING, Any, Type
 
 @dataclass
 class NodeInstancePath:
+    """A class that represent the unique path of a node."""
+
     plugin_name: str = field(default_factory=lambda: "")
     node_type: str = field(default_factory=lambda: "")
     node_name: str = field(default_factory=lambda: "")
     instance_name: str = field(default_factory=lambda: "")
 
-    def sanitize(self, string: str) -> str:
+    @staticmethod
+    def _sanitize(string: str) -> str:
+        """Escapes any conflict character from the given string.
+
+        :param string: The string to sanitize.
+        :return: The sanitized string.
+        """
+
         return string.replace("&", "&&").replace(">", "&>")
 
     def __str__(self) -> str:
+        """Generates a string representation of the node instance path.
+
+        :return: The string representation of the node instance path.
+        """
+
         return (
-            f"{self.sanitize(self.plugin_name)}"
-            + f">{self.sanitize(self.node_type)}"
-            + f">{self.sanitize(self.node_name)}"
-            + f">{self.sanitize(self.instance_name)}"
+            f"{self._sanitize(self.plugin_name)}"
+            + f">{self._sanitize(self.node_type)}"
+            + f">{self._sanitize(self.node_name)}"
+            + f">{self._sanitize(self.instance_name)}"
         )
-
-
-class Resource(ABC):
-    @staticmethod
-    @abstractmethod
-    def resource_name() -> str:
-        ...
 
 
 @dataclass
-class ResourceId:
-    resource_type: Type[Resource]
+class ResourceId(ABC):
+    """Dummy base class for all the resource id classes."""
+
     node_instance_path: NodeInstancePath
     unique_id: str
 
-    def sanitize(self, string: str) -> str:
+    @staticmethod
+    def _sanitize(string: str) -> str:
+        """Escapes any conflict character from the given string.
+
+        :param string: The string to sanitize.
+        :return: The sanitized string.
+        """
+
         return string.replace("&", "&&").replace("@", "&@")
 
+    @abstractmethod
+    def resource_name(self) -> str:
+        """Function that returns the string representation of the resource type."""
+        
+        ...
+
     def __str__(self) -> str:
+        """Generates a string representation of the resource id.
+
+        :return: The string representation of the resource id.
+        """
+
         return (
-            f"{self.sanitize(self.resource_type.resource_name())}"
-            + f"@{self.sanitize(str(self.node_instance_path))}"
-            + f"@{self.sanitize(self.unique_id)}"
+            f"{self._sanitize(self.resource_name())}"
+            + f"@{self._sanitize(str(self.node_instance_path))}"
+            + f"@{self._sanitize(self.unique_id)}"
         )
 
 
-class Song(Resource):
-    def __init__(
-        self,
-        resource_id: ResourceId,
-        uri: str,
-        duration: int,
-        title: str | None = None,
-        album_name: str | None = None,
-        artist_name: str | None = None,
-    ) -> None:
-        self.resource_id = resource_id
-        self.uri = uri
-        self.duration = duration
-        self.title = title
-        self.album_name = album_name
-        self.artist_name = artist_name
+class SongResourceId(ResourceId):
+    """The resource id of a song."""
+    
+    def resource_name(self) -> str:
+        return "song"
+
+
+@dataclass
+class Song:
+    """Dataclass that holds all the relevant information of a song."""
+    
+    resource_id: SongResourceId
+    uri: str
+    duration: int
+    title: str | None = field(default_factory=lambda: None)
+    album_name: str | None = field(default_factory=lambda: None)
+    artist_name: str | None = field(default_factory=lambda: None)
 
     def dict(self) -> dict[str, Any]:
+        """Function that returns a dictionary representation of a song."""
+        
         return {
             "resource_id": str(self.resource_id),
             "uri": self.uri,
@@ -73,52 +102,50 @@ class Song(Resource):
             "artist_name": self.artist_name,
         }
 
-    @staticmethod
-    def resource_name() -> str:
-        return "song"
+
+class AlbumResourceId(ResourceId):
+    """The resource id of an album."""
+
+    def resource_name(self) -> str:
+        return "album"
 
 
-class Album(Resource):
-    def __init__(
-        self,
-        resource_id: ResourceId,
-        title: str | None = None,
-        song_list: list[Song] | None = None,
-    ) -> None:
-        self.resource_id = resource_id
-        self.title = title
-        self.song_list = song_list
+class Album:
+    """Dataclass that holds all the relevant information of a album."""
+    
+    resource_id: AlbumResourceId
+    title: str | None = field(default_factory=lambda: None)
+    song_list: list[Song] | None = field(default_factory=lambda: None)
 
     def dict(self) -> dict[str, Any]:
+        """Function that returns a dictionary representation of an album."""
+        
         return {
             "resource_id": str(self.resource_id),
             "title": self.title,
             "song_list": [song.dict() for song in self.song_list],
         }
 
-    @staticmethod
-    def resource_name() -> str:
-        return "album"
+
+class ArtistResourceId(ResourceId):
+    """The resource id of an artist."""
+
+    def resource_name(self) -> str:
+        return "artist"
 
 
-class Artist(Resource):
-    def __init__(
-        self,
-        resource_id: ResourceId,
-        name: str | None = None,
-        albums: list[Album] | None = None,
-    ) -> None:
-        self.resource_id = resource_id
-        self.name = name
-        self.albums = albums
+class Artist:
+    """Dataclass that holds all the relevant information of a artist."""
+    
+    resource_id: ArtistResourceId
+    name: str | None = field(default_factory=lambda: None)
+    albums: list[Album] | None = field(default_factory=lambda: None)
 
     def dict(self) -> dict[str, Any]:
+        """Function that returns a dictionary representation of an artist."""
+        
         return {
             "resource_id": self.resource_id,
             "name": self.name,
-            "albums": [album.dict() for album in self.albums]
+            "albums": [album.dict() for album in self.albums],
         }
-
-    @staticmethod
-    def resource_name() -> str:
-        return "artist"

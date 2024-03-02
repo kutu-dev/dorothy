@@ -63,7 +63,7 @@ class ChannelState(Schema):
 class RestController(Controller):
     @classmethod
     def get_node_manifest(cls) -> NodeManifest:
-        return NodeManifest(node_name="rest", default_config={"port": 6969})
+        return NodeManifest(name="rest", default_config={"port": 6969})
 
     def __init__(
         self,
@@ -84,7 +84,7 @@ class RestController(Controller):
         site = web.TCPSite(self.runner, "localhost", self.port)
         await site.start()
 
-    def cleanup(self) -> bool:
+    async def cleanup(self) -> bool:
         # TODO NOT WAITED
         self.runner.cleanup()
         return True

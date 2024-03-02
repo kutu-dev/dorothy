@@ -31,7 +31,7 @@ class PlaybinListener(Listener):
     @classmethod
     def get_node_manifest(cls) -> NodeManifest:
         return NodeManifest(
-            node_name="playbin",
+            name="playbin",
         )
 
     def __init__(

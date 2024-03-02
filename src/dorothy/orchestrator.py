@@ -1,6 +1,5 @@
 from typing import Iterator
 
-from .logging import get_logger
 from .nodes import Provider
 from .channel import Channel, ChannelStates
 from .models import Album, ResourceId, Song, Artist
@@ -66,6 +65,14 @@ class Orchestrator:
             album_resource_id.unique_id
         )
 
+    def get_artist(self, artist_resource_id: ResourceId) -> Artist | None:
+        if artist_resource_id.resource_type is not Artist:
+            return None
+
+        return self._access_provider(artist_resource_id).get_artist(
+            artist_resource_id.unique_id
+        )
+
     def get_all_artists(self) -> list[Artist]:
         artists: list[Artist] = []
 
@@ -92,7 +99,9 @@ class Orchestrator:
         elif resource_id.resource_type is Album:
             songs = self.get_album(resource_id).song_list
 
-        #TODO ARTIST HERE
+        elif resource_id.resource_type is Artist:
+            for album in self.get_artist(resource_id).albums:
+                songs.extend(album.song_list)
 
         for song in songs:
             self.channels[channel].insert(song, insert_position)

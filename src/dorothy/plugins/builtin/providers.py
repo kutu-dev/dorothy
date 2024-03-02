@@ -21,7 +21,7 @@ class FilesystemProvider(Provider):
     @classmethod
     def get_node_manifest(cls) -> NodeManifest:
         return NodeManifest(
-            node_name="filesystem",
+            name="filesystem",
             default_config={"paths": ["$MUSIC"], "exclude_paths": []},
         )
 
@@ -201,7 +201,7 @@ class FilesystemProvider(Provider):
         return Artist(
             self.create_resource_id(Artist, artist_unique_id),
             artist_unique_id,
-            [self.get_album(album) for album in self.albums.keys()]
+            [self.get_album(album) for album in self.albums.keys()],
         )
 
     def get_all_artists(self) -> list[Artist]:
