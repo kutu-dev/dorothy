@@ -8,10 +8,14 @@ from typing import Type, Tuple
 # This import is needed by iter_modules to detect the plugins
 import dorothy.plugins
 
-from .channel import Channel
-from .config import ConfigManager
-from .nodes import Controller, Listener, NodeInstancePath, PluginManifest, Provider
-from .orchestrator import Orchestrator
+from ._channel import Channel
+from ._config import ConfigManager
+from .models._node import NodeInstancePath
+from .models._plugin_manifest import PluginManifest
+from .models._controller import Controller
+from .models._provider import Provider
+from .models._listener import Listener
+from ._orchestrator import Orchestrator
 
 
 @dataclass
@@ -38,7 +42,8 @@ class PluginHandler:
         plugins_data: list[PluginData] = []
 
         plugins_modules = list(pkgutil.iter_modules(dorothy.plugins.__path__))
-        self._logger.info(f"Found {len(plugins_modules)} plugin(s), loading them...")
+        self._logger.info(
+            f"Found {len(plugins_modules)} plugin(s), loading them...")
 
         for _, name, _ in plugins_modules:
             full_module_name = f"{dorothy.plugins.__name__}.{name}"
@@ -69,10 +74,18 @@ class PluginHandler:
     def _instantiate_nodes(
         self, plugins_data: list[PluginData]
     ) -> Tuple[Orchestrator, list[Controller]]:
-        """Sets up all the nodes instantiated declared in the plugins
+        """Set up all the nodes declared in its pluins.
 
-        :param plugins_data: A list of plugins and its declared nodes
-        :return: An orchestrator with providers and listeners configured and a list of controllers to control it.
+        Args:
+            plugins_data: List with all the data of all the plugins
+                to initialize its nodes.
+
+        Raises:
+            ValueError: Raised when an unknown node type is found.
+
+        Returns:
+            An orchestrator that holds all the providers and listeners.
+            A list of controllers that have control of the orchestrator.
         """
 
         orchestrator = Orchestrator()
@@ -81,13 +94,20 @@ class PluginHandler:
         for plugin in plugins_data:
             for node in plugin.controllers | plugin.providers | plugin.listeners:
                 node_manifest = node.get_node_manifest()
-                node_config = self._config_manager.handle_node_config(plugin.name, node)
+                node_config = self._config_manager.handle_node_config(
+                    plugin.name, node)
 
-                self._logger.info(f'Loading node "{node_manifest.name}" from plugin "{plugin.name}"')
+                self._logger.info(
+                    f'Loading node "{node_manifest.name}" from '
+                    + f'plugin "{plugin.name}"'
+                )
 
                 for instance_name, instance_config in node_config.items():
                     if instance_config["disabled"]:
-                        self._logger.info(f'The instance "{instance_name}" is disabled, skipping it...')
+                        self._logger.info(
+                            f'The instance "{instance_name}" is '
+                            + "disabled, skipping it..."
+                        )
                         continue
 
                     node_instance_path = NodeInstancePath(
@@ -109,17 +129,25 @@ class PluginHandler:
                         if plugin.name not in orchestrator._providers:
                             orchestrator._providers[plugin.name] = {}
 
-                        if node_manifest.name not in orchestrator._providers[plugin.name]:
-                            orchestrator._providers[plugin.name][node_manifest.name] = {}
+                        if (
+                            node_manifest.name
+                            not in orchestrator._providers[plugin.name]
+                        ):
+                            orchestrator._providers[plugin.name][
+                                node_manifest.name
+                            ] = {}
 
-                        orchestrator._providers[plugin.name][node_manifest.name][instance_name] = node(instance_config, node_instance_path)
+                        orchestrator._providers[plugin.name][node_manifest.name][
+                            instance_name
+                        ] = node(instance_config, node_instance_path)
 
                     elif issubclass(node, Listener):
                         node_instance_path.node_type = "listener"
 
                         for channel in instance_config["channels"]:
                             if channel not in orchestrator._channels:
-                                orchestrator._channels[channel] = Channel(channel)
+                                orchestrator._channels[channel] = Channel(
+                                    channel)
 
                             orchestrator._channels[channel]._listeners.append(
                                 node(

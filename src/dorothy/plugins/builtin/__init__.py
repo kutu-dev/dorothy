@@ -1,4 +1,4 @@
-from dorothy.nodes import PluginManifest
+from dorothy import PluginManifest
 
 from .controllers import RestController
 from .listeners import PlaybinListener

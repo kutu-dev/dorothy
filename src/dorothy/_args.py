@@ -8,7 +8,9 @@ def get_args() -> Namespace:
     """Set up an argument parser and process command-line arguments.
     It already ends execution when checking the version or the help menu.
 
-    :return: Namespace containing all arguments parsed from the command line
+    Returns:
+        Argparser namespace that contains all the arguments parser from the
+            command line.
     """
 
     parser = ArgumentParser(

@@ -3,12 +3,12 @@ from enum import Enum
 from logging import getLogger
 
 from .exceptions import NodeFailureException
-from .nodes import Listener
-from .models import Song
+from .models._listener import Listener
+from .models._song import Song
 
 
 class ChannelStates(Enum):
-    """A enumeration that holds all the states that a channel can be."""
+    """All the states that a channel can be in."""
 
     PLAYING = "PLAYING"
     PAUSED = "PAUSED"
@@ -16,7 +16,9 @@ class ChannelStates(Enum):
 
 
 class Channel:
-    """Channel that holds and manages all the listeners associated with itself."""
+    """Channel that holds and manages all the listeners associated with
+    itself.
+    """
 
     def __init__(self, channel_name: str) -> None:
         self._logger = getLogger(channel_name)
@@ -36,19 +38,22 @@ class Channel:
 
         If the insert position is greater than the queue size the call is ignored.
 
-        :param song: The song to insert.
-        :param insert_position: The position in the queue to insert the song.
+        Args:
+            song: The song to insert.
+            insert_position: The position in the queue to insert the song.
         """
 
         self._logger.info(
-            f'Adding song "{song.title}" to queue in position "{insert_position}"'
+            f'Adding song "{song.title}" to queue in ' + f'position "{insert_position}"'
         )
 
         if insert_position > len(self._queue):
             return
 
         self._queue.insert(
-            insert_position if insert_position <= len(self._queue) else len(self._queue),
+            insert_position
+            if insert_position <= len(self._queue)
+            else len(self._queue),
             song,
         )
 
@@ -58,6 +63,9 @@ class Channel:
         if self.channel_state != ChannelStates.PLAYING:
             return
 
+        if self.current_song is None:
+            return
+
         if time.time() - self._song_start_timestamp > self.current_song.duration:
             self.skip()
 
@@ -65,6 +73,9 @@ class Channel:
         """Start playing the current song or the next one if the channel was stopped."""
 
         if self.channel_state == ChannelStates.PLAYING:
+            return
+
+        if self.current_song is None:
             return
 
         for index, listener in enumerate(self._listeners):
@@ -81,7 +92,7 @@ class Channel:
                 del self._listeners[index]
 
         self.channel_state = ChannelStates.PLAYING
-        self._song_start_timestamp = time.time()
+        self._song_start_timestamp = int(time.time())
 
     def pause(self) -> None:
         """Pause the current playing song."""
@@ -137,7 +148,8 @@ class Channel:
 
         If the insert position is greater than the queue size the call is ignored.
 
-        :param remove_position: The position in the queue of the song to be removed.
+        Args:
+            remove_position: The position in the queue of the song to be removed.
         """
 
         if remove_position > len(self._queue) - 1:
@@ -151,7 +163,8 @@ class Channel:
 
         If the insert position is greater than the queue size the call is ignored.
 
-        :param play_position: The position in the queue of the song to start the playback with.
+        Args:
+            play_position: The position in the queue of the song to start the playback with.
         """
 
         if play_position > len(self._queue):
@@ -172,7 +185,9 @@ class Channel:
                 cleanup_message = listener.cleanup()
                 if cleanup_message is not None:
                     self._logger.warning(
-                        f'Provider "{listener.node_instance_path}" has failed cleanup with error "{cleanup_message}"'
+                        f'Provider "{listener.node_instance_path}" has '
+                        + "failed cleanup"
+                        + f' with error "{cleanup_message}"'
                     )
             except NodeFailureException:
                 # Just ignore it as the "raise_failure_node_exception" function that raised the exception

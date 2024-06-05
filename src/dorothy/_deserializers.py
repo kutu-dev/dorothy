@@ -1,15 +1,10 @@
 from typing import Type
 
-from dorothy.models import (
-    ResourceId,
-    Song,
-    Album,
-    NodeInstancePath,
-    Artist,
-    SongResourceId,
-    AlbumResourceId,
-    ArtistResourceId,
-)
+from .models._song import SongResourceId, Song
+from .models._album import AlbumResourceId, Album
+from .models._artist import ArtistResourceId, Artist
+from .models._resource_id import ResourceId
+from .models._node import NodeInstancePath
 
 
 def deserialize_node_instance_path(
@@ -17,8 +12,11 @@ def deserialize_node_instance_path(
 ) -> NodeInstancePath:
     """Deserialize a serialized node instance path.
 
-    :param serialized_node_instance_path: The serialized node instance path.
-    :return: The deserialized node instance path.
+    Args:
+        serialized_node_instance_path: The serialized node instance path.
+
+    Returns:
+        The deserialized node instance path.
     """
 
     deserialized_data = ["", "", "", ""]
@@ -49,8 +47,11 @@ def deserialize_resource_id(
 ) -> SongResourceId | AlbumResourceId | ArtistResourceId:
     """Deserialize a serialized resource id.
 
-    :param serialized_resource: The serialized resource id
-    :return: A deserialized resource id that matches the serialized id type
+    Args:
+        serialized_resource: The serialized resource id.
+
+    Returns:
+        A deserialized resource id that matches the serialized id type.
     """
 
     deserialized_data = ["", "", ""]
@@ -80,6 +81,6 @@ def deserialize_resource_id(
         case "album":
             return AlbumResourceId(*resource_id_data)
         case "artist":
-            ArtistResourceId(*resource_id_data)
+            return ArtistResourceId(*resource_id_data)
         case _:
             raise ValueError(f"Unknown resource type: {deserialized_data[0]}")

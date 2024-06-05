@@ -1,4 +1,0 @@
-[default]
-disabled = false
-paths = [ "$MUSIC",]
-exclude_paths = []

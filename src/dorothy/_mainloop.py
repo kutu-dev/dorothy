@@ -1,21 +1,25 @@
 import asyncio
 from logging import getLogger
 
-from .config import ConfigManager
-from .plugin_handler import PluginHandler
+from ._config import ConfigManager
+from ._plugin_handler import PluginHandler
 
 
 async def mainloop(config_manager: ConfigManager) -> None:
-    """Get all the configured plugins and starts all the controllers.
+    """Get all the configured plugins and start the controllers.
 
-    :param config_manager: A ConfigManager instance for the plugin handler.
+    Args:
+        config_manager: A configuration manager instance to handle plugin
+            initialization.
     """
 
     logger = getLogger(__name__)
     plugin_handler = PluginHandler(config_manager)
 
     orchestrator, controllers = plugin_handler.load_nodes()
-    controlers_tasks = [asyncio.create_task(controller.start()) for controller in controllers]
+    controlers_tasks = [
+        asyncio.create_task(controller.start()) for controller in controllers
+    ]
 
     logger.info("Starting the mainloop...")
 
@@ -32,20 +36,21 @@ async def mainloop(config_manager: ConfigManager) -> None:
     finally:
         logger.info("Shutting down Dorothy")
 
-        orchestrator._cleanup_nodes()
-
         for controller in controllers:
-            cleanup_message = await controller.cleanup()
-            if cleanup_message is not None:
+            cleanup_status = await controller.cleanup()
+            if cleanup_status is not None:
                 logger.warning(
-                    f'Controller "{controller.node_instance_path}" has failed cleanup with error "{cleanup_message}"'
+                    f'Controller "{controller.node_instance_path}" has failed '
+                    + "cleanup "
+                    + f'with error "{cleanup_status}"'
                 )
 
         tasks = asyncio.all_tasks()
-        # get the current task
+
         current = asyncio.current_task()
-        # remove current task from all tasks
         tasks.remove(current)
-        # cancel all remaining running tasks
+
         for task in tasks:
             task.cancel()
+
+        orchestrator._cleanup_nodes()

@@ -2,8 +2,8 @@ from multiprocessing import Process, Queue
 from pathlib import Path
 from typing import Any, Callable
 
-from dorothy.models import Album, ResourceId, Song, Artist, SongResourceId
-from dorothy.nodes import NodeInstancePath, NodeManifest, Provider
+from dorothy import Album, Song, Artist, SongResourceId
+from dorothy import NodeInstancePath, NodeManifest, Provider
 from platformdirs import (
     user_desktop_dir,
     user_documents_dir,
@@ -12,8 +12,8 @@ from platformdirs import (
     user_pictures_dir,
     user_videos_dir,
 )
-from tinytag import TinyTag
-from tinytag.tinytag import TinyTagException
+from tinytag import TinyTag  # type: ignore
+from tinytag.tinytag import TinyTagException  # type: ignore
 import time
 
 
@@ -141,7 +141,8 @@ class FilesystemProvider(Provider):
             if song_metadata.duration is None:
                 return None
             return Song(
-                SongResourceId(self.node_instance_path, str(song_path.absolute())),
+                SongResourceId(self.node_instance_path,
+                               str(song_path.absolute())),
                 song_path.as_uri(),
                 song_metadata.duration,
                 song_metadata.title,
@@ -187,7 +188,8 @@ class FilesystemProvider(Provider):
         return Album(
             self.create_resource_id(Album, album_unique_id),
             album_unique_id,
-            [self.get_song(song_path) for song_path in self.albums[album_unique_id]],
+            [self.get_song(song_path)
+             for song_path in self.albums[album_unique_id]],
         )
 
     def get_all_albums(self) -> list[Album]:

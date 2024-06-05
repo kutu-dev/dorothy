@@ -3,9 +3,13 @@ from logging import basicConfig, INFO
 
 
 def configure_logging(log_level: str) -> None:
-    """Configure the basic logging for all the app.
+    """Configure the logging of the app.
 
-    :param log_level: Logging level given in a string.
+    Args:
+        log_level: The log level string to set the global level to.
+
+    Raises:
+        ValueError: Raised if the given `log_level` is not valid.
     """
 
     match log_level.lower():
