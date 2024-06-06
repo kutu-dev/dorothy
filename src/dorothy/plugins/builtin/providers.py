@@ -1,8 +1,16 @@
+from multiprocessing import Process, Queue
 from pathlib import Path
 from typing import Any, Callable
 
-from dorothy.models import ResourceId, Song
-from dorothy.nodes import NodeInstancePath, NodeManifest, Provider
+from dorothy import (
+    Album,
+    Song,
+    Artist,
+    SongResourceId,
+    AlbumResourceId,
+    ArtistResourceId,
+)
+from dorothy import NodeInstancePath, NodeManifest, Provider
 from platformdirs import (
     user_desktop_dir,
     user_documents_dir,
@@ -11,13 +19,16 @@ from platformdirs import (
     user_pictures_dir,
     user_videos_dir,
 )
+from tinytag import TinyTag  # type: ignore
+from tinytag.tinytag import TinyTagException  # type: ignore
+import time
 
 
 class FilesystemProvider(Provider):
     @classmethod
     def get_node_manifest(cls) -> NodeManifest:
         return NodeManifest(
-            node_name="filesystem",
+            name="filesystem",
             default_config={"paths": ["$MUSIC"], "exclude_paths": []},
         )
 
@@ -25,7 +36,6 @@ class FilesystemProvider(Provider):
         self, config: dict[str, Any], node_instance_path: NodeInstancePath
     ) -> None:
         super().__init__(config, node_instance_path)
-        self._logger = self.get_logger()
 
         self._logger.info("Parsing source paths in the config...")
         self.paths = self.parse_paths(self.config["paths"])
@@ -33,6 +43,12 @@ class FilesystemProvider(Provider):
 
         self._logger.info("Parsing ignore paths in the config...")
         self.exclude_paths = self.parse_paths(self.config["exclude_paths"])
+
+        self.songs_paths = self.get_songs_paths()
+
+        self.albums: dict[str, list[Path]] = {}
+        self.artists: dict[str, list[str]] = {}
+        self.load_album_artist_lists(self.songs_paths)
 
     def parse_paths(self, raw_paths: list[str]) -> list[Path]:
         special_words: dict[str, Callable[[], str]] = {
@@ -108,8 +124,8 @@ class FilesystemProvider(Provider):
 
         return False
 
-    def get_all_songs(self) -> list[Song]:
-        songs: list[Song] = []
+    def get_songs_paths(self) -> list[Path]:
+        songs_paths: list[Path] = []
 
         for path in self.paths:
             for file in path.glob("**/*"):
@@ -119,25 +135,94 @@ class FilesystemProvider(Provider):
                 if self.is_file_ignored(file):
                     continue
 
-                song_resource_id = ResourceId(
-                    Song, self.node_instance_path, str(file.absolute())
-                )
-                songs.append(
-                    Song(song_resource_id, f"file://{file.absolute()}", file.name)
-                )
+                songs_paths.append(file)
+
+        return songs_paths
+
+    def get_song(self, song_unique_id: str | Path) -> Song | None:
+        song_path = Path(song_unique_id)
+
+        try:
+            song_metadata = TinyTag.get(song_path)
+
+            if song_metadata.duration is None:
+                return None
+            return Song(
+                SongResourceId(self.node_instance_path, str(song_path.absolute())),
+                song_path.as_uri(),
+                song_metadata.duration,
+                song_metadata.title,
+                song_metadata.album,
+                song_metadata.artist,
+            )
+
+        except TinyTagException:
+            return None
+
+    def load_album_artist_lists(self, songs_paths: list[Path]) -> None:
+        for song_path in songs_paths:
+            song = self.get_song(song_path)
+
+            if song is None:
+                continue
+
+            album_name = (
+                song.album_name if song.album_name is not None else "Unknown album"
+            )
+            artist_name = (
+                song.artist_name if song.artist_name is not None else "Unknown artist"
+            )
+
+            self.albums.setdefault(album_name, []).append(song_path)
+            self.artists.setdefault(artist_name, []).append(album_name)
+
+    def get_all_songs(self) -> list[Song]:
+        self.raise_failure_node_exception("A")
+        songs: list[Song] = []
+
+        for song_path in self.songs_paths:
+            song = self.get_song(song_path)
+
+            if song is None:
+                continue
+
+            songs.append(song)
 
         return songs
 
-    def get_song(self, song_unique_id: str) -> Song | None:
-        song_path = Path(song_unique_id)
+    def get_album(self, album_unique_id: str) -> Album:
+        songs: list[Song] = []
+        for song_path in self.albums[album_unique_id]:
+            song = self.get_song(song_path)
 
-        if not song_path.is_file():
-            return None
+            if song is not None:
+                songs.append(song)
 
-        song_resource_id = ResourceId(Song, self.node_instance_path, str(song_path))
-
-        return Song(
-            song_resource_id,
-            song_path.as_uri(),
-            song_path.name,
+        return Album(
+            AlbumResourceId(self.node_instance_path, album_unique_id),
+            album_unique_id,
+            songs,
         )
+
+    def get_all_albums(self) -> list[Album]:
+        albums: list[Album] = []
+
+        for album_name in self.albums.keys():
+            albums.append(self.get_album(album_name))
+
+        return albums
+
+    def get_artist(self, artist_unique_id: str) -> Artist:
+        return Artist(
+            ArtistResourceId(self.node_instance_path, artist_unique_id),
+            artist_unique_id,
+            [self.get_album(album) for album in self.albums.keys()],
+        )
+
+    def get_all_artists(self) -> list[Artist]:
+        artists: list[Artist] = []
+
+        for artist in self.artists.keys():
+            artists.append(self.get_artist(artist))
+
+        return artists
