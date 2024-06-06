@@ -12,6 +12,7 @@ class AlbumResourceId(ResourceId):
         return "album"
 
 
+@dataclass
 class Album:
     """Dataclass that holds all the relevant information of a album."""
 

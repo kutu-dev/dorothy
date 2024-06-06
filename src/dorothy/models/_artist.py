@@ -12,6 +12,7 @@ class ArtistResourceId(ResourceId):
         return "artist"
 
 
+@dataclass
 class Artist:
     """Dataclass that holds all the relevant information of a artist."""
 

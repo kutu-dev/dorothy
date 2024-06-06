@@ -2,7 +2,14 @@ from multiprocessing import Process, Queue
 from pathlib import Path
 from typing import Any, Callable
 
-from dorothy import Album, Song, Artist, SongResourceId
+from dorothy import (
+    Album,
+    Song,
+    Artist,
+    SongResourceId,
+    AlbumResourceId,
+    ArtistResourceId,
+)
 from dorothy import NodeInstancePath, NodeManifest, Provider
 from platformdirs import (
     user_desktop_dir,
@@ -141,8 +148,7 @@ class FilesystemProvider(Provider):
             if song_metadata.duration is None:
                 return None
             return Song(
-                SongResourceId(self.node_instance_path,
-                               str(song_path.absolute())),
+                SongResourceId(self.node_instance_path, str(song_path.absolute())),
                 song_path.as_uri(),
                 song_metadata.duration,
                 song_metadata.title,
@@ -185,11 +191,17 @@ class FilesystemProvider(Provider):
         return songs
 
     def get_album(self, album_unique_id: str) -> Album:
+        songs: list[Song] = []
+        for song_path in self.albums[album_unique_id]:
+            song = self.get_song(song_path)
+
+            if song is not None:
+                songs.append(song)
+
         return Album(
-            self.create_resource_id(Album, album_unique_id),
+            AlbumResourceId(self.node_instance_path, album_unique_id),
             album_unique_id,
-            [self.get_song(song_path)
-             for song_path in self.albums[album_unique_id]],
+            songs,
         )
 
     def get_all_albums(self) -> list[Album]:
@@ -202,7 +214,7 @@ class FilesystemProvider(Provider):
 
     def get_artist(self, artist_unique_id: str) -> Artist:
         return Artist(
-            self.create_resource_id(Artist, artist_unique_id),
+            ArtistResourceId(self.node_instance_path, artist_unique_id),
             artist_unique_id,
             [self.get_album(album) for album in self.albums.keys()],
         )

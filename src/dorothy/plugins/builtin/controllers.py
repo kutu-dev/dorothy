@@ -9,7 +9,7 @@ import aiohttp.web
 from aiohttp import web
 from aiohttp.web_request import Request
 from aiohttp.web_response import Response
-from aiohttp_apispec import (
+from aiohttp_apispec import (  # type: ignore
     docs,
     json_schema,
     response_schema,
@@ -168,8 +168,7 @@ class RestController(Controller):
         app.add_routes(
             [
                 web.get("/songs", self.get_all_songs, allow_head=False),
-                web.get("/songs/{song_resource_id}",
-                        self.get_song, allow_head=False),
+                web.get("/songs/{song_resource_id}", self.get_song, allow_head=False),
                 web.get(
                     "/channels/{channel_name}/queue", self.list_queue, allow_head=False
                 ),
@@ -190,8 +189,7 @@ class RestController(Controller):
                 ),
                 web.post("/channels/{channel_name}/play", self.play),
                 web.post("/channels/{channel_name}/pause", self.pause),
-                web.post(
-                    "/channels/{channel_name}/play_pause", self.play_pause),
+                web.post("/channels/{channel_name}/play_pause", self.play_pause),
                 web.post("/channels/{channel_name}/stop", self.stop),
                 web.post("/channels/{channel_name}/skip", self.skip),
                 web.get("/albums", self.get_all_albums, allow_head=False),
@@ -253,10 +251,14 @@ class RestController(Controller):
     )
     @response_schema(SongSchema, 200, description="All the data of the requested song")
     async def get_song(self, request: Request) -> Response:
-        resource_id = deserialize_resource_id(
-            request.match_info["song_resource_id"])
+        resource_id = deserialize_resource_id(request.match_info["song_resource_id"])
 
-        return web.json_response(self.orchestrator.get_song(resource_id).dict())
+        song = self.orchestrator.get_song(resource_id)
+
+        if song is None:
+            return web.Response(status=404, text="The requested song wasn't found")
+
+        return web.json_response(song.dict())
 
     @docs(
         tags=["channels"],
@@ -306,8 +308,7 @@ class RestController(Controller):
 
         resource_id = deserialize_resource_id(data["resource_id"])
 
-        self.orchestrator.add_to_queue(
-            request.match_info["channel_name"], resource_id)
+        self.orchestrator.add_to_queue(request.match_info["channel_name"], resource_id)
 
         return web.Response()
 
@@ -337,8 +338,7 @@ class RestController(Controller):
     @docs(
         tags=["channels"],
         summary='Remove songs from the queue at the position specified by "{position}" ',
-        responses={
-            200: {"description": "Song successfully removed from the queue"}},
+        responses={200: {"description": "Song successfully removed from the queue"}},
     )
     async def delete_from_queue(self, request: Request) -> Response:
         if not request.match_info["position"].isdigit():
@@ -402,8 +402,7 @@ class RestController(Controller):
     )
     async def play_pause(self, request: Request) -> Response:
         self._logger.info("Start/pause the playback")
-        queue_changed = self.orchestrator.play_pause(
-            request.match_info["channel_name"])
+        queue_changed = self.orchestrator.play_pause(request.match_info["channel_name"])
 
         return web.json_response(
             {
@@ -454,7 +453,6 @@ class RestController(Controller):
         AlbumSchema, 200, description="All the data of the requested album"
     )
     async def get_album(self, request: Request) -> Response:
-        resource_id = deserialize_resource_id(
-            request.match_info["album_resource_id"])
+        resource_id = deserialize_resource_id(request.match_info["album_resource_id"])
 
         return web.json_response(self.orchestrator.get_album(resource_id).dict())

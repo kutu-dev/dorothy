@@ -1,8 +1,13 @@
 from dataclasses import dataclass, field
 from ..exceptions import NodeFailureException
-from typing import Any, TypeVar
+from typing import Any, TypeVar, Type
 from abc import ABC, abstractmethod
 from logging import getLogger
+
+from ._resource_id import ResourceId
+from ._album import Album
+from ._artist import Artist
+from ._song import Song
 
 
 @dataclass

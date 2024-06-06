@@ -1,5 +1,5 @@
 from multiprocessing import set_start_method
-from typing import Any
+from typing import Any, Callable, Self
 
 import gi
 
@@ -12,14 +12,14 @@ gi.require_version("Gst", "1.0")
 from gi.repository import Gst  # noqa: E402
 
 
-def ensure_player_is_available(method):
+def ensure_player_is_available(method: Callable[..., None]) -> Callable[..., None]:
     """
     Ensure that the player has been started, this shouldn't be done at the __init__ of the class
     because that will break creating new process using the multiprocessing package
     in systems that use "spawn" as start method (Windows and macOS)
     """
 
-    def inner(self, *args, **kwargs):
+    def inner(self: Any, *args: Any, **kwargs: Any) -> None:
         if self.player is None:
             self.start_the_player()
 
@@ -48,10 +48,10 @@ class PlaybinListener(Listener):
     ) -> None:
         super().__init__(config, node_instance_path)
 
-        self.player = None
+        self.player: Gst.Element
         self.current_song_uri: str = ""
 
-    def start_the_player(self):
+    def start_the_player(self) -> None:
         """Start the Playbin player.
 
         Raises:
@@ -86,7 +86,7 @@ class PlaybinListener(Listener):
 
         res = self.player.set_state(Gst.State.PLAYING)
         if res == Gst.StateChangeReturn.FAILURE:
-            self.logger().error("Unable to play the song")
+            self._logger.error("Unable to play the song")
 
     @ensure_player_is_available
     def pause(self) -> None:
@@ -94,7 +94,7 @@ class PlaybinListener(Listener):
 
         res = self.player.set_state(Gst.State.PAUSED)
         if res == Gst.StateChangeReturn.FAILURE:
-            self.logger().error("Unable to pause the song")
+            self._logger.error("Unable to pause the song")
 
     @ensure_player_is_available
     def stop(self) -> None:
@@ -102,7 +102,7 @@ class PlaybinListener(Listener):
 
         res = self.player.set_state(Gst.State.NULL)
         if res == Gst.StateChangeReturn.FAILURE:
-            self.logger().error("Unable to stop the playing song")
+            self._logger.error("Unable to stop the playing song")
 
     def cleanup(self) -> None | str:
         """Stop the player and clean up it.

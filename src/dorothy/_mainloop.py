@@ -48,7 +48,9 @@ async def mainloop(config_manager: ConfigManager) -> None:
         tasks = asyncio.all_tasks()
 
         current = asyncio.current_task()
-        tasks.remove(current)
+
+        if current is not None:
+            tasks.remove(current)
 
         for task in tasks:
             task.cancel()

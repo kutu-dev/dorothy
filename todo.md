@@ -9,6 +9,7 @@
     - [ ] Improve the REST API:
         - [ ] Implement queue song moving.
         - [ ] Static and non production mode for the Swagger docs.
+    - [ ] Add docstring in all the project.
  
  - [ ] Make invalid config checker.
    - [ ] Don't instance the node if its config is malformed.
